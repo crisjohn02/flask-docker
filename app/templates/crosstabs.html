@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crosstabs</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Crosstabs</h1>
+
+    <!-- Form for selecting columns and computation method -->
+    <form action="/compute_crosstab" method="post">
+        <label for="column_for_columns">Select Column for Columns:</label>
+        <select name="column_for_columns" id="column_for_columns">
+            {% for col in columns %}
+            <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="column_for_rows">Select Column for Rows:</label>
+        <select name="column_for_rows" id="column_for_rows">
+            {% for col in columns %}
+            <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="computation_method">Select Computation Method:</label>
+        <select name="computation_method" id="computation_method">
+            <option value="anova">ANOVA</option>
+            <option value="chi_square">Chi Square</option>
+            <option value="correlation">Correlation</option>
+        </select>
+        <br>
+
+        <button type="submit">Compute Crosstab</button>
+    </form>
+
+    <!-- Display the computation result -->
+    {% if result %}
+    <h2>Computation Result:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Comparison</th>
+                <th>Statistical Measure</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ column_for_rows }} vs {{ column_for_columns }}</td>
+                <td>{{ result[0] }}</td>
+                <td>{{ result[1] }}</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+</body>
+</html>
