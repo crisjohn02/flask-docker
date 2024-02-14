@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 from flask_mysqldb import MySQL
 import pandas as pd
 import os
@@ -6,6 +6,9 @@ import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy
+from scipy.stats import chi2_contingency
+from io import BytesIO
+
 app = Flask(__name__)
 
 # Configure MySQL
@@ -25,7 +28,7 @@ def preprocess_data(data):
 def home():
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0 LIMIT 10")
     data = cur.fetchall()
     cur.close()
 
@@ -155,6 +158,59 @@ def compute_crosstab():
 
     # Pass the result and selected columns to the template
     return render_template('crosstabs.html', result=result, column_for_columns=column_for_columns, column_for_rows=column_for_rows, computation_method=computation_method)
+
+
+@app.route('/test')
+def test():
+    # Fetch data from the database
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
+    data = cur.fetchall()
+    cur.close()
+
+    # Convert JSON data to DataFrame
+    parsed_data = []
+    for json_string in data:
+        parsed_json = {key: value for key, value in json.loads(json_string[0]).items() if value is not None and value != 'null'}
+    # Convert remaining values to strings
+        parsed_json_str = {key: str(value) for key, value in parsed_json.items()}
+        parsed_data.append(parsed_json_str)
+
+    df = pd.DataFrame(parsed_data)
+
+    # Specify column names for chi-square test
+    column1 = 'a3'
+    column2 = 'a14'
+
+    desired_columns = [column1, column2]
+    counts_table = get_counts_table(df, desired_columns)
+
+    # # Create a contingency table (counts)
+    contingency_table = pd.crosstab(df[column1], df[column2])
+
+    contingency_table_percentage = pd.crosstab(df[column1], df[column2], margins=True, normalize='index') * 100
+    contingency_table_percentage_html = contingency_table_percentage.to_html()
+
+    contingency_table_html = contingency_table.to_html()
+
+    # # Perform chi-square test
+    chi2, p, dof, expected = chi2_contingency(contingency_table)
+
+    expected_df = pd.DataFrame(expected, index=contingency_table.index, columns=contingency_table.columns)
+
+    # excel_buffer = BytesIO()
+    # contingency_table.to_excel(excel_buffer, index=True)
+    # excel_buffer.seek(0)
+    # return send_file(excel_buffer, attachment_filename='cross_tabulation.xlsx', as_attachment=True)
+
+    return render_template('test2.html', df=df, chi2=chi2, p=p, dof=dof, expected_df=expected_df, contingency_table=contingency_table, counts_table=counts_table, contingency_table_html=contingency_table_html, contingency_table_percentage_html=contingency_table_percentage_html)
+
+# Function to get counts table
+def get_counts_table(df, columns):
+    counts = {}
+    for column in columns:
+        counts[column] = df[column].dropna().astype(str).value_counts().to_dict()
+    return counts
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

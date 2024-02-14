@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask DataFrame Display</title>
+</head>
+<body>
+    {{ contingency_table_percentage_html | safe }}
+    {{ contingency_table_html | safe }}
+    <h1>Chi-Square Test Result</h1>
+    <p>Chi-square statistic: {{ chi2 }}</p>
+    <p>p-value: {{ p }}</p>
+    <p>Degrees of freedom: {{ dof }}</p>
+    <br>
+    <br>
+    
+        <h1>Counts Table</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Counts</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for column, counts in counts_table.items() %}
+                <tr>
+                    <td>{{ column }}</td>
+                    <td>
+                        <ul>
+                            {% for index, count in counts.items() %}
+                                <li>{{ index }}: {{ count|string }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h2>Expected Frequencies Table</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                {% for col in expected_df.columns %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for index, row in expected_df.iterrows() %}
+                <tr>
+                    {% for value in row %}
+                        <td>{{ value }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <br>
+    <h2>Contingency Table</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th></th>
+                {% for column in contingency_table.columns %}
+                    <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for index, row in contingency_table.iterrows() %}
+                <tr>
+                    <td>{{ index }}</td>
+                    {% for value in row %}
+                        <td>{{ value }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <h1>DataFrame Display</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                {% for col in df.columns %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for index, row in df.iterrows() %}
+                <tr>
+                    {% for col in df.columns %}
+                        <td>{{ row[col] }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
