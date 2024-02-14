@@ -5,7 +5,11 @@ import os
 import json
 import matplotlib.pyplot as plt
 import seaborn as sns
-import scipy
+import scipy.stats
+import numpy as np 
+
+
+
 app = Flask(__name__)
 
 # Configure MySQL
@@ -22,6 +26,10 @@ def preprocess_data(data):
     return [val if val not in ['None', 'null'] else None for val in data]
 
 @app.route('/')
+def start():
+    return render_template('start.html')
+
+@app.route('/data_table')
 def home():
     # Fetch data from the database
     cur = mysql.connection.cursor()
@@ -41,8 +49,7 @@ def home():
     columns = df.columns.tolist()
 
     # Pass the column names to the template
-    return render_template('index.html', columns=columns)
-
+    return render_template('data_table.html', columns=columns)
 
 @app.route('/column_data', methods=['POST'])
 def column_data():
@@ -60,16 +67,26 @@ def column_data():
     df = pd.DataFrame(data_dicts)
 
     # Preprocess data to combine "None" and "null" values
+    def preprocess_data(column_data):
+        return column_data.replace({None: 'None/null', np.nan: 'None/null', 'null': 'None/null'})
+
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
-    # Get unique values from the selected column
-    column_data = df[selected_column].value_counts()
+    # Ensure the selected column exists and is not empty
+    if selected_column not in df or df[selected_column].isnull().all():
+        return render_template('error.html', message="Selected column is empty or does not exist.")
+
+    # Attempt to get unique values from the selected column
+    try:
+        column_data = df[selected_column].value_counts()
+    except Exception as e:
+        return render_template('error.html', message=f"Error processing column data: {e}")
 
     # Combine "None" and "null" values
-    if None in column_data.index:
-        column_data['None/null'] = column_data[None]
-        column_data.drop(None, inplace=True)
+    if 'None/null' in column_data.index:
+        column_data['None/null'] += column_data.get(None, 0)
+        column_data.drop(None, inplace=True, errors='ignore')
 
     # Calculate percentages
     total_count = column_data.sum()
@@ -86,17 +103,19 @@ def column_data():
     # Add percentages to the bars if data exists
     if not column_data.empty:
         for i, v in enumerate(column_data):
-            plt.text(i, v + 0.5, f'{v} ({column_data_percentage[i]:.2f}%)', ha='center', va='bottom')
+            plt.text(i, v + 0.5, f'{v} ({column_data_percentage.iloc[i]:.2f}%)', ha='center', va='bottom')
 
     # Save the plot as a file
     plot_path = 'static/plot.png'
     plt.savefig(plot_path)
+    plt.close()  # Close the figure to avoid memory issues
 
     # Get unique column names
     columns = df.columns.tolist()
 
     # Pass the plot path and column names to the template
-    return render_template('index.html', plot_path=plot_path, selected_column=selected_column, columns=columns)
+    return render_template('column_data.html', plot_path=plot_path, selected_column=selected_column, columns=columns)
+
 
 @app.route('/crosstabs')
 def crosstabs():
@@ -138,6 +157,9 @@ def compute_crosstab():
     df = pd.DataFrame(data_dicts)
 
     # Preprocess data to combine "None" and "null" values
+    def preprocess_data(column_data):
+        return column_data.replace({None: 'None/null', 'null': 'None/null'})
+
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
@@ -150,6 +172,19 @@ def compute_crosstab():
         contingency_table = pd.crosstab(df_selected[column_for_rows], df_selected[column_for_columns])
         chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
         result = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof}
+
+        
+    elif computation_method == 'anova':
+        # Perform ANOVA computation
+        groups = df_selected.groupby(column_for_columns)[column_for_rows].apply(list)
+        f_val, p_val = scipy.stats.f_oneway(*groups)
+        result = {'ANOVA F-value': f_val, 'p-value': p_val}
+
+    elif computation_method == 'correlation':
+        # Perform correlation computation
+        correlation, p_value = scipy.stats.pearsonr(df_selected[column_for_columns], df_selected[column_for_rows])
+        result = {'Correlation coefficient': correlation, 'p-value': p_value}
+        
     else:
         result = "Invalid computation method"
 
