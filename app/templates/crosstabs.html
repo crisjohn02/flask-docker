@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crosstabs</title>
+
     <style>
+        /* Add your CSS styles here */
         table {
             border-collapse: collapse;
             width: 100%;
@@ -17,13 +19,76 @@
         th {
             background-color: #f2f2f2;
         }
+        /* Style for error message */
+        .error-message {
+            display: none;
+            background-color: #f44336;
+            color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
     </style>
+    <script>
+        // JavaScript function to display error message if selected columns are equal or not valid
+        function checkColumns() {
+            var columnForColumns = document.getElementById('column_for_columns').value;
+            var columnForRows = document.getElementById('column_for_rows').value;
+            var computationMethod = document.getElementById('computation_method').value;
+
+            // Check if selected columns are equal
+            if (columnForColumns === columnForRows) {
+                displayErrorMessage('Selected columns for comparison cannot be the same. Please choose different columns.');
+                return false;
+            }
+
+            // Check if selected columns are not valid for the chosen computation method
+            if (computationMethod === 'anova' || computationMethod === 'chi_square' || computationMethod === 't-test' || computationMethod === 'correlation') {
+                try {
+                    if (!isValidColumns(columnForColumns, columnForRows)) {
+                        displayErrorMessage('Invalid input columns for the chosen computation method. Please select valid columns.');
+                        return false;
+                    }
+                } catch (error) {
+                    displayErrorMessage('Error: ' + error.message);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Function to display error message
+        function displayErrorMessage(message) {
+            var errorMessage = document.getElementById('error-message');
+            errorMessage.innerHTML = message;
+            errorMessage.style.display = 'block';
+            setTimeout(function() {
+                errorMessage.style.display = 'none';
+            }, 3000); // Hide error message after 3 seconds
+        }
+
+        // Function to check if selected columns are valid for the chosen computation method
+        function isValidColumns(columnForColumns, columnForRows) {
+            // Implement your logic here to check if the selected columns are valid for the chosen computation method
+            // Return true if valid, false otherwise
+            // Example: You can check if the selected columns exist in your dataset or if they meet certain criteria
+            return true;
+        }
+    </script>
 </head>
 <body>
     <h1>Crosstabs</h1>
 
+    <!-- Error message for column equality or invalid columns -->
+    <div id="error-message" class="error-message"></div>
+
     <!-- Form for selecting columns and computation method -->
-    <form action="/compute_crosstab" method="post">
+    <form action="/compute_crosstab" method="post" onsubmit="return checkColumns()">
         <label for="column_for_columns">Select Column for Columns:</label>
         <select name="column_for_columns" id="column_for_columns">
             {% for col in columns %}
@@ -42,9 +107,10 @@
 
         <label for="computation_method">Select Computation Method:</label>
         <select name="computation_method" id="computation_method">
-            <option value="anova">ANOVA</option>
             <option value="chi_square">Chi Square</option>
+            <option value="anova">ANOVA</option>
             <option value="correlation">Correlation</option>
+            <option value="t-test">T-Test</option>
         </select>
         <br>
 
@@ -53,23 +119,60 @@
 
     <!-- Display the computation result -->
     {% if result %}
-    <h2>Computation Result:</h2>
+    <h2>Computation Result for {{ column_for_rows }} vs {{ column_for_columns }}:</h2>
     <table>
         <thead>
             <tr>
-                <th>Comparison</th>
                 <th>Statistical Measure</th>
                 <th>Value</th>
             </tr>
         </thead>
         <tbody>
+            {% if computation_method == 'chi_square' %}
             <tr>
-                <td>{{ column_for_rows }} vs {{ column_for_columns }}</td>
-                <td>{{ result[0] }}</td>
-                <td>{{ result[1] }}</td>
+                <td>Chi Square</td>
+                <td>{{ result['Chi Square'] }}</td>
             </tr>
+            <tr>
+                <td>p-value</td>
+                <td>{{ result['p-value'] }}</td>
+            </tr>
+            <tr>
+                <td>Degrees of Freedom</td>
+                <td>{{ result['Degrees of Freedom'] }}</td>
+            </tr>
+            {% elif computation_method == 'anova' %}
+            <tr>
+                <td>F-value</td>
+                <td>{{ result['F-value'] }}</td>
+            </tr>
+            <tr>
+                <td>p-value</td>
+                <td>{{ result['p-value'] }}</td>
+            </tr>
+            {% elif computation_method == 'correlation' %}
+            <tr>
+                <td>Correlation Coefficient</td>
+                <td>{{ result['Correlation Coefficient'] }}</td>
+            </tr>
+            {% elif computation_method == 't-test' %}
+            <tr>
+                <td>t-statistic</td>
+                <td>{{ result['t-statistic'] }}</td>
+            </tr>
+            <tr>
+                <td>p-value</td>
+                <td>{{ result['p-value'] }}</td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
+    <!-- Display scatterplot visualization -->
+    {% if computation_method == 'correlation' %}
+    <h2>Scatterplot Visualization:</h2>
+    <img src="{{ scatterplot_uri }}" alt="Scatterplot">
     {% endif %}
+    {% endif %}
+
 </body>
 </html>
