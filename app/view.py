@@ -6,6 +6,7 @@ import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy
+import numpy as np
 app = Flask(__name__)
 
 # Configure MySQL
@@ -51,7 +52,7 @@ def column_data():
 
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT url_data FROM records")
     data = cur.fetchall()
     cur.close()
 
@@ -60,16 +61,26 @@ def column_data():
     df = pd.DataFrame(data_dicts)
 
     # Preprocess data to combine "None" and "null" values
+    def preprocess_data(column_data):
+        return column_data.replace({None: 'None/null', np.nan: 'None/null', 'null': 'None/null'})
+
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
-    # Get unique values from the selected column
-    column_data = df[selected_column].value_counts()
+    # Ensure the selected column exists and is not empty
+    if selected_column not in df or df[selected_column].isnull().all():
+        return render_template('error.html', message="Selected column is empty or does not exist.")
+
+    # Attempt to get unique values from the selected column
+    try:
+        column_data = df[selected_column].value_counts()
+    except Exception as e:
+        return render_template('error.html', message=f"Error processing column data: {e}")
 
     # Combine "None" and "null" values
-    if None in column_data.index:
-        column_data['None/null'] = column_data[None]
-        column_data.drop(None, inplace=True)
+    if 'None/null' in column_data.index:
+        column_data['None/null'] += column_data.get(None, 0)
+        column_data.drop(None, inplace=True, errors='ignore')
 
     # Calculate percentages
     total_count = column_data.sum()
@@ -86,11 +97,12 @@ def column_data():
     # Add percentages to the bars if data exists
     if not column_data.empty:
         for i, v in enumerate(column_data):
-            plt.text(i, v + 0.5, f'{v} ({column_data_percentage[i]:.2f}%)', ha='center', va='bottom')
+            plt.text(i, v + 0.5, f'{v} ({column_data_percentage.iloc[i]:.2f}%)', ha='center', va='bottom')
 
     # Save the plot as a file
     plot_path = 'static/plot.png'
     plt.savefig(plot_path)
+    plt.close()  # Close the figure to avoid memory issues
 
     # Get unique column names
     columns = df.columns.tolist()

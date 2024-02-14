@@ -4,25 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Table</title>
+    <style>
+        /* Center the content */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Style for the content */
+        .content {
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <h1>Data Table</h1>
+    <div class="content">
+        <!-- Header -->
+        <h1>Data Table</h1>
 
-    <!-- Dropdown menu to select column names -->
-    <form action="/column_data" method="post">
-        <label for="column">Select Column:</label>
-        <select name="column" id="column">
-            {% for col in columns %}
-            <option value="{{ col }}">{{ col }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit">Submit</button>
-    </form>
+        <!-- Column Selection Form -->
+        <form action="/column_data" method="post">
+            <label for="column">Select Column:</label>
+            <select name="column" id="column">
+                {% for col in columns %}
+                    <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Submit</button>
+        </form>
 
-    <!-- Display the plot -->
-    {% if plot_path %}
-    <h2>Counts of Unique Values for {{ selected_column }}</h2>
-    <img src="{{ plot_path }}" alt="Plot">
-    {% endif %}
+        <!-- Display Plot if Available -->
+        {% if plot_path %}
+            <h2>Counts of Unique Values for {{ selected_column }}</h2>
+            <img src="{{ plot_path }}" alt="Plot">
+        {% endif %}
+    </div>
 </body>
 </html>

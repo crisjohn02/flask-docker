@@ -17,6 +17,9 @@
         th {
             background-color: #f2f2f2;
         }
+        .plot-container {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -63,13 +66,21 @@
             </tr>
         </thead>
         <tbody>
+            {% for measure, value in result.items() %}
             <tr>
                 <td>{{ column_for_rows }} vs {{ column_for_columns }}</td>
-                <td>{{ result[0] }}</td>
-                <td>{{ result[1] }}</td>
+                <td>{{ measure }}</td>
+                <td>{{ value }}</td>
             </tr>
+            {% endfor %}
         </tbody>
     </table>
     {% endif %}
+
+    <!-- Visualization of Age_group -->
+    <div class="plot-container">
+        <h2>Visualization of Age_group</h2>
+        <img src="/age_group_plot" alt="Age_group Plot">
+    </div>
 </body>
 </html>
