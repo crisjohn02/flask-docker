@@ -3,44 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Table</title>
-    <style>
-        /* Center the content */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        /* Style for the content */
-        .content {
-            text-align: center;
-        }
-    </style>
+    <title>Data Visualization</title>
+    <!-- Link to Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="content">
-        <!-- Header -->
-        <h1>Data Table</h1>
+<body class="p-6">
+    <!-- Button to access crosstabs.html -->
+    <a href="/crosstabs" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 inline-block">Go to Crosstabs</a>
+<br>
+    <h1 class="text-3xl font-bold mb-4">Data Visualization</h1>
 
-        <!-- Column Selection Form -->
-        <form action="/column_data" method="post">
-            <label for="column">Select Column:</label>
-            <select name="column" id="column">
+    <!-- Dropdown menus to select column and visualization type -->
+    <form action="/column_data" method="post" class="mb-4">
+        <div class="flex flex-wrap mb-2">
+            <label for="column" class="mr-2">Select Column:</label>
+            <select name="column" id="column" class="border border-gray-300 rounded-md px-2 py-1 mr-4">
                 {% for col in columns %}
-                    <option value="{{ col }}">{{ col }}</option>
+                <option value="{{ col }}">{{ col }}</option>
                 {% endfor %}
             </select>
-            <button type="submit">Submit</button>
-        </form>
 
-        <!-- Display Plot if Available -->
-        {% if plot_path %}
-            <h2>Counts of Unique Values for {{ selected_column }}</h2>
-            <img src="{{ plot_path }}" alt="Plot">
+            <label for="visualization" class="mr-2">Select Visualization:</label>
+            <select name="visualization" id="visualization" class="border border-gray-300 rounded-md px-2 py-1">
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="pie">Pie</option>
+                <option value="histogram">Histogram</option>
+            </select>
+        </div>
+        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Visualize</button>
+    </form>
+
+    <!-- Display the visualization above the table -->
+    <div class="mb-6">
+        {% if visualization %}
+            <h2 class="text-xl font-bold mb-2">Visualization</h2>
+            <img src="{{ visualization }}" alt="Visualization" class="max-w-full mb-4">
         {% endif %}
     </div>
+
+    <!-- Display the data in a table -->
+    {% if column_data %}
+    <h2 class="text-xl font-bold mb-2">Data Table</h2>
+    <table class="table-auto">
+        <thead>
+            <tr>
+                <th class="border border-gray-300 px-4 py-2">Value</th>
+                <th class="border border-gray-300 px-4 py-2">Count</th>
+                <th class="border border-gray-300 px-4 py-2">Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for value, count, percentage in column_data %}
+            <tr>
+                <td class="border border-gray-300 px-4 py-2">{{ value }}</td>
+                <td class="border border-gray-300 px-4 py-2">{{ count }}</td>
+                <td class="border border-gray-300 px-4 py-2">{{ percentage }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
 </body>
 </html>

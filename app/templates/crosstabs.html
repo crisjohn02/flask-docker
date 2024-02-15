@@ -5,82 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crosstabs</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 800px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
         table {
             border-collapse: collapse;
             width: 100%;
         }
+
         th, td {
-            border: 1px solid #dddddd;
-            text-align: left;
+            border: 1px solid #ddd;
             padding: 8px;
         }
+
         th {
             background-color: #f2f2f2;
+            font-weight: bold;
         }
-        .plot-container {
+
+        .result {
             margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Crosstabs</h1>
+    <div class="container">
+        <h1>Crosstabs</h1>
 
-    <!-- Form for selecting columns and computation method -->
-    <form action="/compute_crosstab" method="post">
-        <label for="column_for_columns">Select Column for Columns:</label>
-        <select name="column_for_columns" id="column_for_columns">
-            {% for col in columns %}
-            <option value="{{ col }}">{{ col }}</option>
-            {% endfor %}
-        </select>
-        <br>
+        <!-- Form for selecting columns and computation method -->
+        <form action="/compute_crosstab" method="post">
+            <label for="column_for_columns">Select Column for Columns:</label>
+            <select name="column_for_columns" id="column_for_columns">
+                {% for col in columns %}
+                <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
 
-        <label for="column_for_rows">Select Column for Rows:</label>
-        <select name="column_for_rows" id="column_for_rows">
-            {% for col in columns %}
-            <option value="{{ col }}">{{ col }}</option>
-            {% endfor %}
-        </select>
-        <br>
+            <label for="column_for_rows">Select Column for Rows:</label>
+            <select name="column_for_rows" id="column_for_rows">
+                {% for col in columns %}
+                <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
 
-        <label for="computation_method">Select Computation Method:</label>
-        <select name="computation_method" id="computation_method">
-            <option value="anova">ANOVA</option>
-            <option value="chi_square">Chi Square</option>
-            <option value="correlation">Correlation</option>
-        </select>
-        <br>
+            <label for="computation_method">Select Computation Method:</label>
+            <select name="computation_method" id="computation_method">
+                <option value="anova">ANOVA</option>
+                <option value="chi_square">Chi Square</option>
+                <option value="correlation">Correlation</option>
+            </select>
 
-        <button type="submit">Compute Crosstab</button>
-    </form>
+            <button type="submit">Compute Crosstab</button>
+        </form>
 
-    <!-- Display the computation result -->
+        <!-- Display the computation result -->
     {% if result %}
-    <h2>Computation Result:</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Comparison</th>
-                <th>Statistical Measure</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for measure, value in result.items() %}
-            <tr>
-                <td>{{ column_for_rows }} vs {{ column_for_columns }}</td>
-                <td>{{ measure }}</td>
-                <td>{{ value }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="result">
+        <h2>Computation Result:</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Comparison</th>
+                    <th>Statistical Measure</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for measure, value in result.items() %}
+                <tr>
+                    <td>{{ column_for_rows }} vs {{ column_for_columns }}</td>
+                    <td>{{ measure }}</td>
+                    <td>{{ value }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% endif %}
 
-    <!-- Visualization of Age_group -->
-    <div class="plot-container">
-        <h2>Visualization of Age_group</h2>
-        <img src="/age_group_plot" alt="Age_group Plot">
     </div>
 </body>
 </html>
