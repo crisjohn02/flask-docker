@@ -1,5 +1,7 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_mysqldb import MySQL
+from flask import make_response
+import csv
 import pandas as pd
 import os
 import json
@@ -8,8 +10,8 @@ import seaborn as sns
 import scipy
 import io
 import base64
-import numpy as np
-
+from collections import defaultdict
+import scipy.stats
 app = Flask(__name__)
 
 # Configure MySQL
@@ -21,12 +23,28 @@ app.config['MYSQL_DB'] = 'fluent'
 # Initialize MySQL
 mysql = MySQL(app)
 
-# Function to preprocess data and combine "None" and "null" values
-def preprocess_data(column_data):
-    return column_data.replace([None, np.nan, 'null'], 'None/null')
+# Function to preprocess data and exclude "null" values
+def preprocess_data(data):
+    return [val if val != "null" else None for val in data]
 
-@app.route('/')
-def home():
+# Function to convert string values to numerical types (int or float)
+def convert_to_numeric(data):
+    try:
+        return pd.to_numeric(data)
+    except ValueError:
+        return data
+
+# Function to check if a column contains non-categorical string values
+def is_categorical(column):
+    try:
+        pd.to_numeric(column)
+        return True
+    except ValueError:
+        unique_values = column.unique()
+        return len(unique_values) <= 10 and all(isinstance(val, str) for val in unique_values)
+
+@app.route('/index')
+def index():
     # Fetch data from the database
     cur = mysql.connection.cursor()
     cur.execute("SELECT `url_data` FROM `records`")
@@ -41,40 +59,35 @@ def home():
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
+    # Convert string values to numerical types (int or float)
+    df = df.apply(convert_to_numeric)
+
     # Get unique column names
     columns = df.columns.tolist()
 
+    # Get unique values for each column
+    unique_values = {column: df[column].unique().tolist() for column in df.columns}
+
     # Pass the column names to the template
-    return render_template('index.html', columns=columns)
-
-    # Function to convert string values to numerical types (int or float)
-def convert_to_numeric(data):
-    try:
-        return pd.to_numeric(data)
-    except ValueError:
-        return data
-
-# Function to check if a column contains non-categorical string values
-def is_categorical(column):
-    try:
-        # Attempt to convert column values to numeric type
-        pd.to_numeric(column)
-        return True  # If successful, column is numerical
-    except ValueError:
-        # If conversion to numeric type fails, check for categorical string values
-        unique_values = column.unique()
-        return len(unique_values) <= 10 and all(isinstance(val, str) for val in unique_values)
+    return render_template('index.html', columns=columns, unique_values=unique_values)
 
 
-@app.route('/column_data', methods=['POST'])
-def column_data():
-    # Get the selected column name from the form
+@app.route('/')
+def home():
+   
+    # Pass the column names to the template
+    return render_template('dashboard.html')
+
+
+@app.route('/visualize_data', methods=['POST'])
+def visualize_data():
+    # Get the selected column name and visualization type from the form
     selected_column = request.form['column']
     visualization_type = request.form['visualization']
 
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT url_data FROM records")
+    cur.execute("SELECT `url_data` FROM `records`")
     data = cur.fetchall()
     cur.close()
 
@@ -83,9 +96,6 @@ def column_data():
     df = pd.DataFrame(data_dicts)
 
     # Preprocess data to combine "None" and "null" values
-    def preprocess_data(column_data):
-        return column_data.replace({None: 'None/null', np.nan: 'None/null', 'null': 'None/null'})
-
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
@@ -103,7 +113,7 @@ def column_data():
     else:
         column_data_table = []
 
-     # Generate the visualization based on the selected type
+    # Generate the visualization based on the selected type
     if visualization_type == 'bar':
         plt.figure(figsize=(10, 6))
         sns.countplot(x=selected_column, data=df, order=df[selected_column].value_counts().index)
@@ -138,44 +148,7 @@ def column_data():
     # Pass the encoded image to the template
     visualization_uri = f"data:image/png;base64,{visualization}"
 
-    # Ensure the selected column exists and is not empty
-    if selected_column not in df or df[selected_column].isnull().all():
-        return render_template('error.html', message="Selected column is empty or does not exist.")
-
-    # Attempt to get unique values from the selected column
-    try:
-        column_data = df[selected_column].value_counts()
-    except Exception as e:
-        return render_template('error.html', message=f"Error processing column data: {e}")
-
-    # Combine "None" and "null" values
-    if 'None/null' in column_data.index:
-        column_data['None/null'] += column_data.get(None, 0)
-        column_data.drop(labels=[None], inplace=True, errors='ignore')  # Fix applied here
-
-    # Calculate percentages
-    total_count = column_data.sum()
-    column_data_percentage = (column_data / total_count) * 100
-
-    # Create a bar plot
-    sns.set(style="whitegrid")
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=column_data.index, y=column_data)
-    plt.title(f'Counts of Unique Values for {selected_column}')
-    plt.xlabel(selected_column)
-    plt.ylabel('Count')
-
-    # Add percentages to the bars if data exists
-    if not column_data.empty:
-        for i, v in enumerate(column_data):
-            plt.text(i, v + 0.5, f'{v} ({column_data_percentage.iloc[i]:.2f}%)', ha='center', va='bottom')
-
-    # Save the plot as a file
-    plot_path = 'static/plot.png'
-    plt.savefig(plot_path)
-    plt.close()  # Close the figure to avoid memory issues
-
-    # Get unique column names
+    # Get column names
     columns = df.columns.tolist()
 
     # Pass the visualization URI, column names, table data, and other data to the template
@@ -198,95 +171,85 @@ def crosstabs():
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Pass the column names to the template
-    return render_template('crosstabs.html', columns=columns)
-
-@app.route('/compute_crosstab', methods=['POST'])
-def compute_crosstab():
-    # Get selected column names and computation method from the form
-    column_for_columns = request.form['column_for_columns']
-    column_for_rows = request.form['column_for_rows']
-    computation_method = request.form['computation_method']
-
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
-
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
-
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
-
     # Convert string values to numerical types (int or float)
     df = df.apply(convert_to_numeric)
 
-    # Filter DataFrame based on selected columns
-    df_selected = df[[column_for_columns, column_for_rows]]
-
     # Get unique column names
     columns = df.columns.tolist()
 
-    # Initialize scatterplot_uri with a default value
-    scatterplot_uri = None
+    # Filter out non-categorical string columns
+    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
 
-    # Perform computation based on the selected method
-    if computation_method == 'chi_square':
-        # Perform Chi Square computation
-        contingency_table = pd.crosstab(df_selected[column_for_rows], df_selected[column_for_columns])
-        chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
-        result = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof}
-    elif computation_method == 'anova':
-        # Perform ANOVA computation
+    # Pass the column names to the template
+    return render_template('crosstabs.html', columns=categorical_columns)
+
+@app.route('/compute_crosstab', methods=['POST'])
+def compute_crosstab():
+    try:
+        # Get selected column names and computation method from the form
+        column_for_columns = request.form['column_for_columns']
+        column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
+        computation_method = request.form['computation_method']
+
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
+
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
+
+        # Filter DataFrame based on selected columns
+        df_selected = df[[column_for_columns] + column_for_rows]
+
+        # Get unique column names
+        columns = df.columns.tolist()
+
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+        # Calculate the total value of the selected column
+        total_column_value = df[column_for_columns].count()
+
+        # Perform computation based on the selected method
         result = {}
-        for group in df_selected[column_for_rows].unique():
-            group_data = df_selected[df_selected[column_for_rows] == group][column_for_columns]
-            anova_result = scipy.stats.f_oneway(group_data)
-            result[group] = {'F-value': anova_result[0], 'p-value': anova_result[1]}
-    elif computation_method == 't-test':
-        # Perform t-test computation
-        group_data1 = df_selected[df_selected[column_for_rows] == df_selected[column_for_rows].unique()[0]][column_for_columns]
-        group_data2 = df_selected[df_selected[column_for_rows] == df_selected[column_for_rows].unique()[1]][column_for_columns]
-        t_statistic, p_value = scipy.stats.ttest_ind(group_data1, group_data2)
-        result = {'t-statistic': t_statistic, 'p-value': p_value}
-    elif computation_method == 'correlation':
-        # Perform correlation computation
-        correlation_result = df_selected[[column_for_columns, column_for_rows]].corr()
-        correlation_coefficient = correlation_result.iloc[0, 1]
-        
-        # Generate scatterplot
-        plt.figure(figsize=(8, 6))
-        plt.scatter(df_selected[column_for_columns], df_selected[column_for_rows])
-        plt.xlabel(column_for_columns)
-        plt.ylabel(column_for_rows)
-        plt.title(f'Scatterplot for {column_for_rows} vs {column_for_columns}')
-        
-        # Save the scatterplot to a buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        
-        # Convert the image to base64 and encode it
-        scatterplot = base64.b64encode(buf.getvalue()).decode('utf-8')
-        
-        # Pass the encoded scatterplot to the template
-        scatterplot_uri = f"data:image/png;base64,{scatterplot}"
-        
-        result = {'Correlation Coefficient': correlation_coefficient}
-    
-    else:
-        result = "Invalid computation method"
+        if computation_method == 'chi_square':
+            # Perform Chi Square computation
+            result = {}
+            for selected_row in column_for_rows:
+                contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
+                chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
+                
+                # Separate frequency and percentage in breakdown table
+                breakdown_table = contingency_table.copy()
+                breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
+                breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
+                
+                # Add sum of rows and columns to the breakdown tables
+                breakdown_table['Total'] = breakdown_table.sum(axis=1)
+                breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
+                breakdown_table.loc['Total'] = breakdown_table.sum()
+                breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
+                
+                result[selected_row] = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof, 
+                                        'breakdown_table_frequency': breakdown_table, 
+                                        'breakdown_table_percentage': breakdown_table_percentage}
 
-    # Pass the result and selected columns to the template
-    return render_template('crosstabs.html', result=result, scatterplot_uri=scatterplot_uri, columns=columns, column_for_columns=column_for_columns, column_for_rows=column_for_rows, computation_method=computation_method)
 
+        # Pass the result and selected columns to the template
+        return render_template('crosstabs.html', total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    except ValueError as e:
+        error_message = 'An error occurred: ' + str(e)
+        return render_template('crosstabs.html', error_message=error_message, columns=categorical_columns)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

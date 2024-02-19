@@ -1,20 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Visualization</title>
-    <!-- Link to Tailwind CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="p-6">
-    <!-- Button to access crosstabs.html -->
-    <a href="/crosstabs" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 inline-block">Go to Crosstabs</a>
-<br>
+{% extends 'layout.html' %}
+{% block title %}
+Visualization
+{% endblock %}
+{% block content %}
+
+ 
+
+
+
+<div class="container">
     <h1 class="text-3xl font-bold mb-4">Data Visualization</h1>
 
     <!-- Dropdown menus to select column and visualization type -->
-    <form action="/column_data" method="post" class="mb-4">
+    <form action="/visualize_data" method="post" class="mb-4">
         <div class="flex flex-wrap mb-2">
             <label for="column" class="mr-2">Select Column:</label>
             <select name="column" id="column" class="border border-gray-300 rounded-md px-2 py-1 mr-4">
@@ -31,16 +29,16 @@
                 <option value="histogram">Histogram</option>
             </select>
         </div>
-        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Visualize</button>
+        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded custom-button">Visualize</button>
     </form>
 
-    <!-- Display the visualization above the table -->
-    <div class="mb-6">
-        {% if visualization %}
-            <h2 class="text-xl font-bold mb-2">Visualization</h2>
-            <img src="{{ visualization }}" alt="Visualization" class="max-w-full mb-4">
-        {% endif %}
-    </div>
+<!-- Display the visualization above the table -->
+<div class="mb-6">
+    {% if visualization %}
+        <h2 class="text-xl font-bold mb-2">Visualization</h2>
+        <img src="{{ visualization }}" alt="Visualization" class="max-w-full mb-4" style="max-width: 100%; height: auto;">
+    {% endif %}
+</div>
 
     <!-- Display the data in a table -->
     {% if column_data %}
@@ -64,5 +62,8 @@
         </tbody>
     </table>
     {% endif %}
-</body>
-</html>
+
+</div>
+
+
+{% endblock %}
