@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session
 from flask_mysqldb import MySQL
 from flask import make_response
 import csv
@@ -12,7 +12,9 @@ import io
 import base64
 from collections import defaultdict
 import scipy.stats
+
 app = Flask(__name__)
+app.secret_key = 'doms'
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
@@ -79,80 +81,87 @@ def home():
     return render_template('dashboard.html')
 
 
+
+
 @app.route('/visualize_data', methods=['POST'])
 def visualize_data():
-    # Get the selected column name and visualization type from the form
-    selected_column = request.form['column']
-    visualization_type = request.form['visualization']
+    try:
+        # Get the selected column name and visualization type from the form
+        selected_column = request.form['column']
+        visualization_type = request.form['visualization']
 
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
 
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
 
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
 
-    # Convert string values to numerical types (int or float)
-    df = df.apply(convert_to_numeric)
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
 
-    # Get data for the selected column
-    column_data = df[selected_column]
+        # Get data for the selected column
+        column_data = df[selected_column]
 
-    # Prepare data for the table
-    if not column_data.empty:
-        column_value_counts = column_data.value_counts()
-        total_count = len(column_data)
-        column_data_table = [(value, count, f"{(count / total_count) * 100:.2f}%") for value, count in column_value_counts.items()]
-    else:
-        column_data_table = []
 
-    # Generate the visualization based on the selected type
-    if visualization_type == 'bar':
+
+        # Prepare data for the table
+        if not column_data.empty:
+            column_value_counts = column_data.value_counts()
+            total_count = len(column_data)
+            column_data_table = [(value, count, f"{(count / total_count) * 100:.2f}%") for value, count in column_value_counts.items()]
+        else:
+            column_data_table = []
+
+        # Generate the visualization based on the selected type
         plt.figure(figsize=(10, 6))
-        sns.countplot(x=selected_column, data=df, order=df[selected_column].value_counts().index)
-        for i, v in enumerate(df[selected_column].value_counts()):
-            plt.text(i, v + 0.5, str(v), ha='center')
-        plt.xlabel(selected_column)
-        plt.ylabel('Count')
-    elif visualization_type == 'line':
-        plt.figure(figsize=(10, 6))
-        df[selected_column].value_counts().sort_index().plot(kind='line', marker='o')
-        plt.xlabel(selected_column)
-        plt.ylabel('Count')
-    elif visualization_type == 'pie':
-        plt.figure(figsize=(10, 6))
-        value_counts = df[selected_column].value_counts()
-        plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
-        plt.xlabel(selected_column)
-    elif visualization_type == 'histogram':
-        plt.figure(figsize=(10, 6))
-        df[selected_column].plot(kind='hist', bins=10)
-        plt.xlabel(selected_column)
-        plt.ylabel('Frequency')
+        if visualization_type == 'bar':
+            sns.countplot(x=selected_column, data=df, order=df[selected_column].value_counts().index)
+            for i, v in enumerate(df[selected_column].value_counts()):
+                plt.text(i, v + 0.5, str(v), ha='center')
+            plt.xlabel(selected_column)
+            plt.ylabel('Count')
+        elif visualization_type == 'line':
+            df[selected_column].value_counts().sort_index().plot(kind='line', marker='o')
+            plt.xlabel(selected_column)
+            plt.ylabel('Count')
+        elif visualization_type == 'pie':
+            value_counts = df[selected_column].value_counts()
+            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
+            plt.xlabel(selected_column)
+        elif visualization_type == 'histogram':
+            df[selected_column].plot(kind='hist', bins=10)
+            plt.xlabel(selected_column)
+            plt.ylabel('Frequency')
 
-    # Save the visualization to a buffer
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
+        # Save the visualization to a buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
 
-    # Convert the image to base64 and encode it
-    visualization = base64.b64encode(buf.getvalue()).decode('utf-8')
+        # Convert the image to base64 and encode it
+        visualization = base64.b64encode(buf.getvalue()).decode('utf-8')
 
-    # Pass the encoded image to the template
-    visualization_uri = f"data:image/png;base64,{visualization}"
+        # Pass the encoded image to the template
+        visualization_uri = f"data:image/png;base64,{visualization}"
 
-    # Get column names
-    columns = df.columns.tolist()
+        # Get column names
+        columns = df.columns.tolist()
 
-    # Pass the visualization URI, column names, table data, and other data to the template
-    return render_template('index.html', visualization=visualization_uri, selected_column=selected_column, columns=columns, column_data=column_data_table)
+        # Pass the visualization URI, column names, table data, and other data to the template
+        return render_template('index.html', visualization=visualization_uri, selected_column=selected_column, columns=columns, column_data=column_data_table,)
+    except Exception as e:
+        error_message = 'Selected column does not contain numeric data'
+        flash(f'Error: {error_message}', 'error')  # Flash the error message
+        print(f'Flashed message: {error_message}')  # Print the flashed message for debugging
+        return redirect(url_for('index'))  # Redirect back to the index page
 
 
 @app.route('/crosstabs')
@@ -226,6 +235,14 @@ def compute_crosstab():
             # Perform Chi Square computation
             result = {}
             for selected_row in column_for_rows:
+                # Calculate the frequency counts of unique values in selected_row
+                selected_row_counts = df[selected_row].value_counts()
+                total_selected_row_count = selected_row_counts.sum()
+
+                # Calculate the percentage of each value in selected_row
+                selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
+                selected_row_percentage_sum = selected_row_percentage.sum()
+
                 contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
                 chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
                 
@@ -238,15 +255,19 @@ def compute_crosstab():
                 breakdown_table['Total'] = breakdown_table.sum(axis=1)
                 breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
                 breakdown_table.loc['Total'] = breakdown_table.sum()
+
                 breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
                 
                 result[selected_row] = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof, 
                                         'breakdown_table_frequency': breakdown_table, 
-                                        'breakdown_table_percentage': breakdown_table_percentage}
+                                        'breakdown_table_percentage': breakdown_table_percentage,
+                                        'selected_row_counts': selected_row_counts,
+                                        'total_selected_row_count': total_selected_row_count,
+                                        'selected_row_percentage': selected_row_percentage}
 
 
         # Pass the result and selected columns to the template
-        return render_template('crosstabs.html', total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+        return render_template('crosstabs.html', selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
     except ValueError as e:
         error_message = 'An error occurred: ' + str(e)
         return render_template('crosstabs.html', error_message=error_message, columns=categorical_columns)

@@ -157,6 +157,7 @@ Crosstabs
                 <thead>
                     <tr>
                         <th> <h4>{{ column_for_columns }} with respect to {{ selected_row }}</h4></th>
+                        <th>{{ selected_row }} Counts</th>
                         {% for col_header in result[selected_row]['breakdown_table_frequency'].columns %}
                             <th>{{ col_header }}</th>
                         {% endfor %}
@@ -164,28 +165,43 @@ Crosstabs
                 </thead>
                 <tbody>
                     {% set frequency_rows = result[selected_row]['breakdown_table_frequency'].iterrows() %}
+                    {% set selected_row_counts = result[selected_row]['selected_row_counts'] %}
                     {% set percentage_rows = result[selected_row]['breakdown_table_percentage'].iterrows() %}
+                    {% set selected_row_percentage = result[selected_row]['selected_row_percentage'] %}
                     {% for i in range(result[selected_row]['breakdown_table_frequency'].shape[0]) %}
                         {% set frequency_row = frequency_rows.__next__() %}
                         {% set percentage_row = percentage_rows.__next__() %}
                         <tr class="odd">
                             <td>{{ frequency_row[0] }} (Frequency)</td>
+                            <td>
+                                {{ selected_row_counts[frequency_row[0]] }}
+                                {% if loop.last %}
+                                    {{ result[selected_row]['total_selected_row_count'] }}
+                                {% endif %}
+                            </td>
                             {% for value in frequency_row[1] %}
                                 <td>{{ value }}</td>
                             {% endfor %}
                         </tr>
                         <tr class="even">
                             <td>{{ percentage_row[0] }} (Percentage)</td>
+                            <td>
+                                {% set rounded_percentage = (selected_row_percentage[percentage_row[0]]|default(0))|round(2) %}
+                                {% if rounded_percentage != 0 %}
+                                    {{ rounded_percentage }}%
+                                {% endif %}
+                                {% if loop.last %}
+                                    {{ result[selected_row]['selected_row_percentage'].sum()|round(2) }}%
+                                {% endif %}
+                            </td>
                             {% for value in percentage_row[1] %}
-                                {% if value is none or value != value %} {# Check for NaN with value != value #}
+                                {% if value is none or value != value %}
                                     <td>100%</td>
                                 {% else %}
                                     <td>{{ value|round(2) }}%</td>
                                 {% endif %}
                             {% endfor %}
                         </tr>
-                        
-                                                
                     {% endfor %}
                     <tr>
                         <td>
@@ -206,7 +222,8 @@ Crosstabs
             <br>
         {% endif %}
     {% endfor %}
- </div>
+</div>
+
 
  <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
 
