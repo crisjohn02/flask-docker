@@ -45,6 +45,28 @@ def is_categorical(column):
         unique_values = column.unique()
         return len(unique_values) <= 10 and all(isinstance(val, str) for val in unique_values)
 
+# Function to preprocess data based on the crosstab_config.json file
+def preprocess_with_config(data, column, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    variable_info = next((x for x in config['rows'] + config['columns'] if x['variable'] == column), None)
+    if variable_info:
+        values_mapping = {item['value']: item['label'] for item in variable_info['values']}
+        return data.replace(values_mapping)
+    else:
+        return data
+
+def get_column_label(column_name, config_file_path):
+    with open(config_file_path, 'r') as config_file:
+        config = json.load(config_file)
+
+    variable_info = next((x for x in config['rows'] + config['columns'] if x['variable'] == column_name), None)
+    if variable_info:
+        return variable_info['name']
+    else:
+        return column_name
+
 @app.route('/index')
 def index():
     # Fetch data from the database
@@ -64,24 +86,31 @@ def index():
     # Convert string values to numerical types (int or float)
     df = df.apply(convert_to_numeric)
 
+    # Apply preprocessing based on the crosstab_config.json file
+    for column in df.columns:
+        df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
+
     # Get unique column names
     columns = df.columns.tolist()
 
     # Get unique values for each column
     unique_values = {column: df[column].unique().tolist() for column in df.columns}
 
-    # Pass the column names to the template
-    return render_template('index.html', columns=columns, unique_values=unique_values)
+    # Filter out non-categorical string columns
+    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
 
+    # Load the crosstab configuration file
+    with open('static/crosstab_config.json', 'r') as config_file:
+        crosstab_config = json.load(config_file)
+
+    # Pass the column names to the template
+    return render_template('index.html', columns=columns, categorical_columns=categorical_columns, unique_values=unique_values, crosstab_config=crosstab_config)
 
 @app.route('/')
 def home():
    
     # Pass the column names to the template
     return render_template('dashboard.html')
-
-
-
 
 @app.route('/visualize_data', methods=['POST'])
 def visualize_data():
@@ -107,13 +136,28 @@ def visualize_data():
         # Convert string values to numerical types (int or float)
         df = df.apply(convert_to_numeric)
 
+        # Apply preprocessing based on the crosstab_config.json file
+        for column in df.columns:
+            df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
+
         # Get data for the selected column
         column_data = df[selected_column]
 
+        # Get column names
+        columns = df.columns.tolist()
 
+        # Get unique values for each column
+        unique_values = {column: df[column].unique().tolist() for column in df.columns}
+
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+        # Get the label for the selected column based on the config file
+        column_label = get_column_label(selected_column, 'static/crosstab_config2.json')
 
         # Prepare data for the table
         if not column_data.empty:
+            column_data = preprocess_with_config(column_data, selected_column, 'static/crosstab_config2.json')
             column_value_counts = column_data.value_counts()
             total_count = len(column_data)
             column_data_table = [(value, count, f"{(count / total_count) * 100:.2f}%") for value, count in column_value_counts.items()]
@@ -121,25 +165,30 @@ def visualize_data():
             column_data_table = []
 
         # Generate the visualization based on the selected type
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(14, 8))  # Adjust the figure size as needed
+
         if visualization_type == 'bar':
             sns.countplot(x=selected_column, data=df, order=df[selected_column].value_counts().index)
             for i, v in enumerate(df[selected_column].value_counts()):
                 plt.text(i, v + 0.5, str(v), ha='center')
-            plt.xlabel(selected_column)
-            plt.ylabel('Count')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+            plt.ylabel('Count', fontsize=12)
+            plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for better readability
         elif visualization_type == 'line':
             df[selected_column].value_counts().sort_index().plot(kind='line', marker='o')
-            plt.xlabel(selected_column)
-            plt.ylabel('Count')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+            plt.ylabel('Count', fontsize=12)
         elif visualization_type == 'pie':
             value_counts = df[selected_column].value_counts()
-            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
-            plt.xlabel(selected_column)
+            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
         elif visualization_type == 'histogram':
             df[selected_column].plot(kind='hist', bins=10)
-            plt.xlabel(selected_column)
-            plt.ylabel('Frequency')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+            plt.ylabel('Frequency', fontsize=12)
+
+        plt.tight_layout()  # Adjust layout for better spacing
+
 
         # Save the visualization to a buffer
         buf = io.BytesIO()
@@ -152,11 +201,12 @@ def visualize_data():
         # Pass the encoded image to the template
         visualization_uri = f"data:image/png;base64,{visualization}"
 
-        # Get column names
-        columns = df.columns.tolist()
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
 
         # Pass the visualization URI, column names, table data, and other data to the template
-        return render_template('index.html', visualization=visualization_uri, selected_column=selected_column, columns=columns, column_data=column_data_table,)
+        return render_template('index.html', visualization=visualization_uri, categorical_columns=categorical_columns, unique_values=unique_values, column_label=column_label, selected_column=selected_column, crosstab_config=crosstab_config, columns=columns, column_data=column_data_table,)
     except Exception as e:
         error_message = 'Selected column does not contain numeric data'
         flash(f'Error: {error_message}', 'error')  # Flash the error message
@@ -189,8 +239,12 @@ def crosstabs():
     # Filter out non-categorical string columns
     categorical_columns = [col for col in df.columns if is_categorical(df[col])]
 
+    # Load the crosstab configuration file
+    with open('static/crosstab_config.json', 'r') as config_file:
+        crosstab_config = json.load(config_file)
+
     # Pass the column names to the template
-    return render_template('crosstabs.html', columns=categorical_columns)
+    return render_template('crosstabs.html', crosstab_config=crosstab_config, columns=categorical_columns)
 
 @app.route('/compute_crosstab', methods=['POST'])
 def compute_crosstab():
@@ -216,6 +270,10 @@ def compute_crosstab():
 
         # Convert string values to numerical types (int or float)
         df = df.apply(convert_to_numeric)
+
+        # Apply preprocessing based on the crosstab_config.json file
+        for column in df.columns:
+            df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
 
         # Filter DataFrame based on selected columns
         df_selected = df[[column_for_columns] + column_for_rows]
@@ -265,12 +323,15 @@ def compute_crosstab():
                                         'total_selected_row_count': total_selected_row_count,
                                         'selected_row_percentage': selected_row_percentage}
 
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
 
         # Pass the result and selected columns to the template
-        return render_template('crosstabs.html', selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+        return render_template('crosstabs.html', crosstab_config=crosstab_config, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
     except ValueError as e:
         error_message = 'An error occurred: ' + str(e)
-        return render_template('crosstabs.html', error_message=error_message, columns=categorical_columns)
+        return render_template('crosstabs.html', error_message=error_message, crosstab_config=crosstab_config, columns=categorical_columns)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

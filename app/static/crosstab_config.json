@@ -1,0 +1,165 @@
+{
+    "rows": [
+        {
+            "name": "Age_group",
+            "values": [
+                {
+                    "label": "Group 1: 12 -14",
+                    "value": 1
+                },
+                {
+                    "label": "Group 2: 15 - 16",
+                    "value": 2
+                },
+                {
+                    "label": "Group 3: 17 - 18",
+                    "value": 3
+                }
+            ],
+            "variable": "Age_group"
+        },
+        {
+            "name": "Body_Mass_Index",
+            "values": [
+                {
+                    "label": "BMI 1: Underweight < 18.5",
+                    "value": 1
+                },
+                {
+                    "label": "BMI 2: Normal weight 18.5 - 25",
+                    "value": 2
+                },
+                {
+                    "label": "BMI 3: Overweight 25 - 30",
+                    "value": 3
+                },
+                {
+                    "label": "BMI 4: Obese > 30",
+                    "value": 4
+                }
+            ],
+            "variable": "Body_Mass_Index"
+        },
+        {
+            "name": "Which one of the following best describes your ethnicity?&nbsp;",
+            "values": [
+                {
+                    "label": "White British",
+                    "value": 1
+                },
+                {
+                    "label": "Mixed or multiple ethnic groups",
+                    "value": 2
+                },
+                {
+                    "label": "Asian or Asian British",
+                    "value": 3
+                },
+                {
+                    "label": "Black, African, Caribbean, Black British",
+                    "value": 4
+                },
+                {
+                    "label": "Other ethnic group",
+                    "value": 5
+                },
+                {
+                    "label": "Rather not say",
+                    "value": 6
+                }
+            ],
+            "variable": "a10"
+        },
+        {
+            "name": "How regularly do you do physical exercise (gym, yoga, running…?)",
+            "values": [
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "1 or 2 times a week",
+                    "value": 2
+                },
+                {
+                    "label": "3 times a week",
+                    "value": 3
+                },
+                {
+                    "label": "More than 3 times a week",
+                    "value": 4
+                }
+            ],
+            "variable": "a14"
+        },
+        {
+            "name": "What are your dietary requirements ?",
+            "values": [
+                {
+                    "label": "Vegan",
+                    "value": 1
+                },
+                {
+                    "label": "Vegetarian",
+                    "value": 2
+                },
+                {
+                    "label": "Gluten Free",
+                    "value": 3
+                },
+                {
+                    "label": "Pescatarian",
+                    "value": 4
+                },
+                {
+                    "label": "Dairy Free",
+                    "value": 5
+                },
+                {
+                    "label": "None of the Above",
+                    "value": 6
+                }
+            ],
+            "variable": "a15"
+        },
+        {
+            "name": "Are you left-handed or right-handed?",
+            "values": [
+                {
+                    "label": "Left-handed",
+                    "value": 1
+                },
+                {
+                    "label": "Right-handed",
+                    "value": 2
+                }
+            ],
+            "variable": "a16"
+        }
+    ],
+    "columns": [
+        {
+            "name": "Which best describes your gender?",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                },
+                {
+                    "label": "Non-binary",
+                    "value": 3
+                },
+                {
+                    "label": "Prefer not to say",
+                    "value": 4
+                }
+            ],
+            "variable": "a3"
+        }
+    ],
+    "attached_surveys": null
+}

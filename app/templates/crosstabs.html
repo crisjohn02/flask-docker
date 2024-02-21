@@ -58,8 +58,38 @@ Crosstabs
         columnForRowsDiv.appendChild(newRowOption);
     }
 
-    // Function to download CSV file
-    function downloadCsv(filename, csvData) {
+    function updateTableHeaders() {
+            // Load the crosstab configuration
+            fetch('/static/crosstab_config.json')
+                .then(response => response.json())
+                .then(data => {
+                    // Update column headers
+                    const tableHeaders = document.querySelectorAll('.table-header');
+                    tableHeaders.forEach(header => {
+                        const variable = header.textContent.trim(); // Get the original column name
+                        const columnInfo = data.columns.find(col => col.variable === variable);
+                        if (columnInfo) {
+                            header.textContent = columnInfo.name; // Update the header text
+                        }
+                    });
+
+                    // Update row headers
+                    const tableRowHeaders = document.querySelectorAll('.table-row-header');
+                    tableRowHeaders.forEach(header => {
+                        const variable = header.textContent.trim(); // Get the original row name
+                        const rowInfo = data.rows.find(row => row.variable === variable);
+                        if (rowInfo) {
+                            header.textContent = rowInfo.name; // Update the header text
+                        }
+                    });
+                });
+        }
+
+        // Call the function when the page loads
+        updateTableHeaders();
+
+        // Function to download CSV file
+        function downloadCsv(filename, csvData) {
             var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
             if (navigator.msSaveBlob) { // IE 10+
                 navigator.msSaveBlob(blob, filename);
@@ -78,30 +108,35 @@ Crosstabs
         }
 
         function exportCsv() {
-        var csvData = [];
-        var rows = document.querySelectorAll("#crosstab-results table");
+            var csvData = [];
+            var tables = document.querySelectorAll("#crosstab-results table");
 
-        rows.forEach(function(table) {
-            var tableHeaders = [];
-            table.querySelectorAll("th").forEach(function(th) {
-                tableHeaders.push(th.innerText);
-            });
-            csvData.push(tableHeaders.join(","));
+            tables.forEach(function(table) {
+                var rows = table.querySelectorAll("tr");
 
-            table.querySelectorAll("tr").forEach(function(row) {
-                var rowData = [];
-                row.querySelectorAll("td").forEach(function(cell) {
-                    rowData.push(cell.innerText);
+                rows.forEach(function(row) {
+                    var rowData = [];
+                    var cells = row.querySelectorAll("th, td");
+
+                    cells.forEach(function(cell) {
+                        var text = cell.innerText.replace(/"/g, '""'); // Escape double quotes
+                        text = text.replace(/\n/g, ' '); // Replace newlines with spaces
+                        rowData.push('"' + text + '"'); // Enclose each cell in double quotes
+                    });
+
+                    csvData.push(rowData.join(","));
                 });
-                csvData.push(rowData.join(","));
-            });
-            csvData.push(""); // Add empty line to separate tables
-        });
 
-        var csvContent = csvData.join("\n");
-        var filename = "chi-square_results.csv";
-        downloadCsv(filename, csvContent);
-    }
+                // Add an empty line after processing each table
+                csvData.push("");
+            });
+
+            var csvContent = csvData.join("\n");
+            var filename = "crosstab_results.csv";
+            downloadCsv(filename, csvContent);
+        }
+
+
 </script>
 
 
@@ -152,12 +187,33 @@ Crosstabs
  <div id="crosstab-results" style="overflow: scroll;">
     {% for selected_row in column_for_rows_list %}
         {% if result[selected_row] %}
-            
+            {% set column_name = column_for_columns %}
+            {% set row_name = selected_row %}
+            {% set column_info = crosstab_config['columns'] | selectattr('variable', 'equalto', column_for_columns) | first %}
+            {% set row_info = crosstab_config['rows'] | selectattr('variable', 'equalto', selected_row) | first %}
+            {% if column_info is defined %}
+                {% set column_name = column_info['name'] %}
+            {% endif %}
+            {% if row_info is defined %}
+                {% set row_name = row_info['name'] %}
+            {% endif %}
             <table>
                 <thead>
                     <tr>
-                        <th> <h4>{{ column_for_columns }} with respect to {{ selected_row }}</h4></th>
-                        <th>{{ selected_row }} Counts</th>
+                        <th></th>
+                        <th></th>
+                        <th>All</th>
+                        <th></th>
+                        <th>{{ column_name }}</th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <th>{{ row_name }}</th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
                         {% for col_header in result[selected_row]['breakdown_table_frequency'].columns %}
                             <th>{{ col_header }}</th>
                         {% endfor %}
@@ -172,19 +228,29 @@ Crosstabs
                         {% set frequency_row = frequency_rows.__next__() %}
                         {% set percentage_row = percentage_rows.__next__() %}
                         <tr class="odd">
-                            <td>{{ frequency_row[0] }} (Frequency)</td>
+                            <td>{{ frequency_row[0] }}</td>
+                            <td>Frequency</td>
                             <td>
                                 {{ selected_row_counts[frequency_row[0]] }}
                                 {% if loop.last %}
                                     {{ result[selected_row]['total_selected_row_count'] }}
                                 {% endif %}
                             </td>
+                            <td>
+                                {% if loop.last %}
+                                    {{ result[selected_row]['total_selected_row_count'] }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            
                             {% for value in frequency_row[1] %}
                                 <td>{{ value }}</td>
                             {% endfor %}
                         </tr>
                         <tr class="even">
-                            <td>{{ percentage_row[0] }} (Percentage)</td>
+                            <td></td>
+                            <td>Column%</td>
                             <td>
                                 {% set rounded_percentage = (selected_row_percentage[percentage_row[0]]|default(0))|round(2) %}
                                 {% if rounded_percentage != 0 %}
@@ -193,10 +259,17 @@ Crosstabs
                                 {% if loop.last %}
                                     {{ result[selected_row]['selected_row_percentage'].sum()|round(2) }}%
                                 {% endif %}
+                            <td>
+                                {% if loop.last %}
+                                    {{ result[selected_row]['selected_row_percentage'].sum()|round(2) }}%
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             </td>
                             {% for value in percentage_row[1] %}
                                 {% if value is none or value != value %}
-                                    <td>100%</td>
+                                    <td>100.0%</td>
                                 {% else %}
                                     <td>{{ value|round(2) }}%</td>
                                 {% endif %}
@@ -204,7 +277,7 @@ Crosstabs
                         </tr>
                     {% endfor %}
                     <tr>
-                        <td>
+                        <td colspan="8">
                             {% if result[selected_row] %}
                                 {% set chi_square = result[selected_row]['Chi Square'] %}
                                 {% set p_value = result[selected_row]['p-value'] %}
@@ -213,7 +286,7 @@ Crosstabs
                                 {% set p_sign = ">" if p_value > 0.05 else "<" %}
                                 {% set total_column_values = total_column_value %}
                                 
-                                The association between {{ selected_row }} and Which best describes your {{ column_for_columns }}? is {{ significance }} X² ({{ total_column_values }}) = {{ '%.2f'|format(chi_square) }}. (df = {{ degrees_of_freedom }}) (p {{ p_sign }} .05)
+                                The association between {{ selected_row }} and Which best describes your {{ column_for_columns }} is {{ significance }} X² ({{ total_column_values }}) = {{ '%.2f'|format(chi_square) }}, df = {{ degrees_of_freedom }}, p {{ p_sign }} .05
                             {% endif %}
                         </td>
                     </tr> 
@@ -229,7 +302,6 @@ Crosstabs
 
    
 </div>
-
 
 
 
