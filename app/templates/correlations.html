@@ -1,0 +1,44 @@
+{% extends 'layout.html' %}
+{% block title %}
+Correlation
+{% endblock %}
+{% block content %}
+
+
+
+<div class="container">
+    <h1>Correlation</h1>
+
+    <form action="{{ url_for('compute_correlation') }}" method="POST">
+        <label for="x_column">Select X Column:</label>
+        <select name="x_column" id="x_column">
+            {% for column in columns %}
+            <option value="{{ column }}" {% if column == x_column %}selected{% endif %}>{{ column }}</option>
+            {% endfor %}
+        </select>
+    
+        <label for="y_column">Select Y Column:</label>
+        <select name="y_column" id="y_column">
+            {% for column in columns %}
+            <option value="{{ column }}" {% if column == y_column %}selected{% endif %}>{{ column }}</option>
+            {% endfor %}
+        </select>
+    
+        <button type="submit">Generate Scatter Plot</button>
+    </form>
+
+    {% if scatter_plot %}
+    <div style="text-align: center;">
+        <h2>Scatter Plot of {{ x_column }} vs {{ y_column }}</h2>
+        <img src="data:image/png;base64,{{ scatter_plot }}" alt="Scatter Plot">
+        {% if pearson_correlation %}
+        <p>Pearson Correlation Coefficient: {{ pearson_correlation }}</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p style="text-align: center;">No scatter plot available. Please select different columns.</p>
+    {% endif %}
+</div>
+
+
+{% endblock %}

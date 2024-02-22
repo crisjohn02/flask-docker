@@ -17,7 +17,7 @@ Crosstabs
     }
 
    // JavaScript function to display error message if selected columns are equal
-   function checkColumns() {
+    function checkColumns() {
         var columnForColumns = document.getElementById('column_for_columns').value;
         var columnForRowsDiv = document.getElementById('column_for_rows_div');
         var selectedRows = columnForRowsDiv.getElementsByClassName('row-option');
@@ -54,7 +54,7 @@ Crosstabs
         var newRowOption = document.createElement('div');
         newRowOption.className = 'row-option';
         newRowOption.innerHTML = '<label>Select Column for Rows:</label><select name="column_for_rows" class="column-for-rows">' + 
-                                 '{% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}</select><br>';
+                                '{% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}</select><br>';
         columnForRowsDiv.appendChild(newRowOption);
     }
 
@@ -143,8 +143,8 @@ Crosstabs
 <div class="container">
     <h1>Crosstabs</h1>
 
-     <!-- Error message for column equality -->
-     <div id="error-message" class="error-message"></div>
+        <!-- Error message for column equality -->
+        <div id="error-message" class="error-message"></div>
 
     <!-- Form for selecting columns and computation method -->
     <form action="/compute_crosstab" method="post" onsubmit="return checkColumns()">
@@ -181,10 +181,10 @@ Crosstabs
 
     <!-- Display the computation result -->
 
- <h2>Chi-square Test Results</h2>
+<h2>Chi-square Test Results</h2>
 
- 
- <div id="crosstab-results" style="overflow: scroll;">
+
+<div id="crosstab-results" style="overflow: scroll;">
     {% for selected_row in column_for_rows_list %}
         {% if result[selected_row] %}
             {% set column_name = column_for_columns %}
@@ -298,9 +298,8 @@ Crosstabs
 </div>
 
 
- <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
+    <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
 
-   
 </div>
 
 
