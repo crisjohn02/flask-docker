@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
 from flask_mysqldb import MySQL
 from flask import make_response
 import csv
@@ -12,9 +12,10 @@ import io
 import base64
 from collections import defaultdict
 import scipy.stats
+from scipy.stats import ttest_ind
 
 app = Flask(__name__)
-app.secret_key = 'doms'
+
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
@@ -114,7 +115,7 @@ def home():
 
 @app.route('/visualize_data', methods=['POST'])
 def visualize_data():
-    try:
+    
         # Get the selected column name and visualization type from the form
         selected_column = request.form['column']
         visualization_type = request.form['visualization']
@@ -180,7 +181,7 @@ def visualize_data():
             plt.ylabel('Count', fontsize=12)
         elif visualization_type == 'pie':
             value_counts = df[selected_column].value_counts()
-            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%')
+            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
             plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
         elif visualization_type == 'histogram':
             df[selected_column].plot(kind='hist', bins=10)
@@ -207,48 +208,43 @@ def visualize_data():
 
         # Pass the visualization URI, column names, table data, and other data to the template
         return render_template('index.html', visualization=visualization_uri, categorical_columns=categorical_columns, unique_values=unique_values, column_label=column_label, selected_column=selected_column, crosstab_config=crosstab_config, columns=columns, column_data=column_data_table,)
-    except Exception as e:
-        error_message = 'Selected column does not contain numeric data'
-        flash(f'Error: {error_message}', 'error')  # Flash the error message
-        print(f'Flashed message: {error_message}')  # Print the flashed message for debugging
-        return redirect(url_for('index'))  # Redirect back to the index page
+  
 
 
 @app.route('/crosstabs')
 def crosstabs():
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
 
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
 
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
 
-    # Convert string values to numerical types (int or float)
-    df = df.apply(convert_to_numeric)
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
 
-    # Get unique column names
-    columns = df.columns.tolist()
+        # Get unique column names
+        columns = df.columns.tolist()
 
-    # Filter out non-categorical string columns
-    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
 
-    # Load the crosstab configuration file
-    with open('static/crosstab_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
 
-    # Pass the column names to the template
-    return render_template('crosstabs.html', crosstab_config=crosstab_config, columns=categorical_columns)
+        # Pass the column names to the template
+        return render_template('crosstabs.html', crosstab_config=crosstab_config, columns=categorical_columns)
 
 @app.route('/compute_crosstab', methods=['POST'])
 def compute_crosstab():
-    try:
         # Get selected column names and computation method from the form
         column_for_columns = request.form['column_for_columns']
         column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
@@ -322,6 +318,16 @@ def compute_crosstab():
                                         'selected_row_counts': selected_row_counts,
                                         'total_selected_row_count': total_selected_row_count,
                                         'selected_row_percentage': selected_row_percentage}
+        elif computation_method == 't_test':
+        # Perform T-test computation
+            result = {}
+            for selected_row in column_for_rows:
+                group1 = df_selected[df_selected[selected_row] == 'group1'][column_for_columns]
+                group2 = df_selected[df_selected[selected_row] == 'group2'][column_for_columns]
+
+                t_statistic, p_value = ttest_ind(group1, group2)
+
+                result[selected_row] = {'T-statistic': t_statistic, 'p-value': p_value}
 
         # Load the crosstab configuration file
         with open('static/crosstab_config.json', 'r') as config_file:
@@ -329,9 +335,138 @@ def compute_crosstab():
 
         # Pass the result and selected columns to the template
         return render_template('crosstabs.html', crosstab_config=crosstab_config, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
-    except ValueError as e:
-        error_message = 'An error occurred: ' + str(e)
-        return render_template('crosstabs.html', error_message=error_message, crosstab_config=crosstab_config, columns=categorical_columns)
+    
+
+
+@app.route('/Ttest')
+def Ttest():
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
+
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
+
+        # Get unique column names
+        columns = df.columns.tolist()
+
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
+
+        # Pass the column names to the template
+        return render_template('Ttest.html', crosstab_config=crosstab_config, columns=categorical_columns)
+
+@app.route('/compute_Ttest', methods=['POST'])
+def compute_Ttest():
+        # Get selected column names and computation method from the form
+        column_for_columns = request.form['column_for_columns']
+        column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
+        computation_method = request.form['computation_method']
+
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
+
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
+
+        # Apply preprocessing based on the crosstab_config.json file
+        for column in df.columns:
+            df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
+
+        # Filter DataFrame based on selected columns
+        df_selected = df[[column_for_columns] + column_for_rows]
+
+        # Get unique column names
+        columns = df.columns.tolist()
+
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+        # Calculate the total value of the selected column
+        total_column_value = df[column_for_columns].count()
+
+        # Perform computation based on the selected method
+        result = {}
+        if computation_method == 't_test':
+            # Perform T-test computation
+            result = {}
+            for selected_row in column_for_rows:
+                # Calculate the frequency counts of unique values in selected_row
+                selected_row_counts = df[selected_row].value_counts()
+                total_selected_row_count = selected_row_counts.sum()
+
+                # Calculate the percentage of each value in selected_row
+                selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
+                selected_row_percentage_sum = selected_row_percentage.sum()
+
+                contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
+                # Construct contingency table for t-test
+                group1 = df_selected[selected_row]
+                group2 = df_selected[column_for_columns]
+
+                # Perform t-test
+                t_statistic, p_value = ttest_ind(group1, group2, equal_var=True)
+                
+                # Separate frequency and percentage in breakdown table
+                breakdown_table = contingency_table.copy()
+                breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
+                breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
+
+                head_cell_count = 7  # Set a default value for head_cell_count
+ 
+                # Check if selected_row is iterable (e.g., a list)
+                if hasattr(selected_row, '__iter__'):
+                    # Get the length of selected_row
+                    selected_row_length = len(selected_row)
+                    head_cell_count += selected_row_length
+                
+                # Add sum of rows and columns to the breakdown tables
+                breakdown_table['Total'] = breakdown_table.sum(axis=1)
+                breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
+                breakdown_table.loc['Total'] = breakdown_table.sum()
+                breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
+                
+                result[selected_row] = {'t_statistic': t_statistic, 'p_value': p_value, 
+                                        'breakdown_table_frequency': breakdown_table, 
+                                        'breakdown_table_percentage': breakdown_table_percentage,
+                                        'selected_row_counts': selected_row_counts,
+                                        'total_selected_row_count': total_selected_row_count,
+                                        'selected_row_percentage': selected_row_percentage}
+
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
+
+        # Pass the result and selected columns to the template
+        return render_template('Ttest.html', crosstab_config=crosstab_config, head_cell_count=head_cell_count, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+
+
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
