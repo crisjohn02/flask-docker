@@ -113,6 +113,12 @@ def home():
     # Pass the column names to the template
     return render_template('dashboard.html')
 
+@app.route('/flow')
+def flow():
+   
+    # Pass the column names to the template
+    return render_template('flow.html')
+
 @app.route('/visualize_data', methods=['POST'])
 def visualize_data():
     
@@ -437,7 +443,7 @@ def compute_Ttest():
                 breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
                 breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
 
-                head_cell_count = 7  # Set a default value for head_cell_count
+                head_cell_count = 8  # Set a default value for head_cell_count
  
                 # Check if selected_row is iterable (e.g., a list)
                 if hasattr(selected_row, '__iter__'):
@@ -466,7 +472,37 @@ def compute_Ttest():
         return render_template('Ttest.html', crosstab_config=crosstab_config, head_cell_count=head_cell_count, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
 
 
+@app.route('/correlation')
+def correlation():
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
 
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
+
+        # Get unique column names
+        columns = df.columns.tolist()
+
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
+
+        # Pass the column names to the template
+        return render_template('correlation.html', crosstab_config=crosstab_config, columns=categorical_columns)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

@@ -7,19 +7,21 @@ Visualization
 <div class="container">
     <h1 class="text-3xl font-bold mb-4">Data Visualization</h1>
 
-
+    <div>
+        <p class="text-lg font-medium text-gray-900 dark:text-white">Data visualization is the graphical representation of information and data. By using visual elements like charts, graphs, and maps, data visualization tools provide an accessible way to see and understand trends, outliers, and patterns in data. </p>
+    </div>
 
     <!-- Dropdown menus to select column and visualization type -->
     <form  action="/visualize_data" method="post" >
         <div class="flex flex-wrap mb-2">
-            <label for="column" class="mr-2">Select Column:</label>
+            <label for="column" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Column:</label>
             <select name="column" id="column" >
                 {% for col in columns %}
                 <option value="{{ col }}">{{ col }}</option>
                 {% endfor %}
             </select>
 
-            <label for="visualization" class="mr-2">Select Visualization:</label>
+            <label for="visualization" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Visualization:</label>
             <select name="visualization" id="visualization" >
                 <option value="bar">Bar</option>
                 <option value="line">Line</option>

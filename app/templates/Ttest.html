@@ -141,14 +141,18 @@ T-Test
 
 
 <div class="container">
-    <h1>Crosstabs</h1>
+    <h1>T - Test</h1>
+
+    <div>
+        <p class="text-lg font-medium text-gray-900 dark:text-white">An inferential statistic used to determine if there is a significant difference between the means of two groups and how they are related. T-tests are used when the data sets follow a normal distribution and have unknown variances, like the data set recorded from flipping a coin 100 times.</p>
+    </div>
 
      <!-- Error message for column equality -->
      <div id="error-message" class="error-message"></div>
 
     <!-- Form for selecting columns and computation method -->
     <form action="/compute_Ttest" method="post" onsubmit="return checkColumns()">
-        <label for="column_for_columns">Select Column for Columns:</label>
+        <label for="column_for_columns" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Column for Columns:</label>
         <select name="column_for_columns" id="column_for_columns">
             {% for col in columns %}
             <option value="{{ col }}">{{ col }}</option>
@@ -159,7 +163,7 @@ T-Test
         <!-- Container for selecting multiple rows -->
         <div id="column_for_rows_div">
             <div class="row-option">
-                <label>Select Column for Rows:</label>
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Column for Rows:</label>
                 <select name="column_for_rows" class="column-for-rows">
                     {% for col in columns %}
                     <option value="{{ col }}">{{ col }}</option>

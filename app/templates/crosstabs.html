@@ -138,18 +138,31 @@ Crosstabs
 
 
 </script>
-
+<style>
+    .border-box{
+        
+        background-color: purple;
+        border-style: solid;
+        border-radius: 100px;
+        border-color: black;
+        
+    }
+</style>
 
 <div class="container">
     <h1>Crosstabs</h1>
+    
+    <div>
+        <p class="text-lg font-medium text-gray-900 dark:text-white">Cross tabulation (crosstab) is a useful analysis tool commonly used to compare the results for one or more variables with the results of another variable. It is used with data on a nominal scale, where variables are named or labeled with no specific order.</p>
+    </div>
 
      <!-- Error message for column equality -->
      <div id="error-message" class="error-message"></div>
 
     <!-- Form for selecting columns and computation method -->
     <form action="/compute_crosstab" method="post" onsubmit="return checkColumns()">
-        <label for="column_for_columns">Select Column for Columns:</label>
-        <select name="column_for_columns" id="column_for_columns">
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="column_for_columns">Select Column for Columns:</label>
+        <select  name="column_for_columns" id="column_for_columns" >
             {% for col in columns %}
             <option value="{{ col }}">{{ col }}</option>
             {% endfor %}
@@ -159,8 +172,8 @@ Crosstabs
         <!-- Container for selecting multiple rows -->
         <div id="column_for_rows_div">
             <div class="row-option">
-                <label>Select Column for Rows:</label>
-                <select name="column_for_rows" class="column-for-rows">
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Column for Rows:</label>
+                <select name="column_for_rows" class="column-for-rows" >
                     {% for col in columns %}
                     <option value="{{ col }}">{{ col }}</option>
                     {% endfor %}
