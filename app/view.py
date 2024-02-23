@@ -76,52 +76,8 @@ def is_continuous(column):
         return False
 
 def calculate_correlation(df_numerical):
-    """
-    Calculate the Pearson correlation matrix for numerical columns in the given DataFrame.
-    
-    Parameters:
-    - df_numerical: pandas DataFrame containing only the numerical data.
-    
-    Returns:
-    - A pandas DataFrame representing the Pearson correlation matrix.
-    """
     correlation_matrix = df_numerical.corr(method='pearson')
     return correlation_matrix
-
-def generate_heatmap_base64(correlation_matrix):
-    """
-    Generate a heatmap from the correlation matrix and encode it as a base64 string.
-    
-    Parameters:
-    - correlation_matrix: pandas DataFrame representing the correlation matrix.
-    
-    Returns:
-    - Base64 encoded string of the heatmap image.
-    """
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap='coolwarm', cbar=True)
-    plt.tight_layout()
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    plt.close()
-    buf.seek(0)
-    image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-
-def generate_scatter_plot_base64(df, x_column, y_column):
-    plt.figure(figsize=(10, 8))
-    sns.scatterplot(data=df, x=x_column, y=y_column)
-    plt.xlabel(x_column)
-    plt.ylabel(y_column)
-    plt.title(f'Scatter Plot of {x_column} vs {y_column}')
-    plt.tight_layout()
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    plt.close()
-    buf.seek(0)
-    image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-    return image_base64
-    return image_base64
-
 
 @app.route('/index')
 def index():
@@ -268,7 +224,6 @@ def visualize_data():
         print(f'Flashed message: {error_message}')  # Print the flashed message for debugging
         return redirect(url_for('index'))  # Redirect back to the index page
 
-
 @app.route('/crosstabs')
 def crosstabs():
     # Fetch data from the database
@@ -413,6 +368,23 @@ def correlations():
 
     return render_template('correlations.html', columns=numerical_columns)
 
+def generate_scatter_plot_base64(df, x_column, y_column, pearson_correlation=None):
+    plt.figure(figsize=(10, 8))
+    sns.scatterplot(data=df, x=x_column, y=y_column)
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+    plt.title(f'Scatter Plot of {x_column} vs {y_column}')        
+    plt.text(2.5, 0, f'Pearson Correlation Coefficient: { pearson_correlation }', fontsize=15, color='black')
+    plt.tight_layout()
+    
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close()
+    buf.seek(0)
+    image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    return image_base64
+
+
 @app.route('/compute_correlation', methods=['POST'])
 def compute_correlation():
     # Get selected columns from the form
@@ -438,19 +410,18 @@ def compute_correlation():
     if x_column and y_column:
         # Ensure columns are numeric for Pearson correlation
         if df[x_column].dtype in ['float64', 'int64'] and df[y_column].dtype in ['float64', 'int64']:
-            # Generate scatter plot and encode to base64
-            scatter_plot_base64 = generate_scatter_plot_base64(df, x_column, y_column)
-
             # Compute the Pearson correlation coefficient
             correlation, p_value = pearsonr(df[x_column].dropna(), df[y_column].dropna())
             pearson_correlation = f"{correlation:.3f}"
+
+            # Generate scatter plot and encode to base64
+            scatter_plot_base64 = generate_scatter_plot_base64(df, x_column, y_column, pearson_correlation)
 
     # Re-fetch the numerical columns for form repopulation
     numerical_columns = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
 
     # Pass the base64 encoded image, Pearson correlation, column selections, and numerical columns back to the template
     return render_template('correlations.html', scatter_plot=scatter_plot_base64, pearson_correlation=pearson_correlation, x_column=x_column, y_column=y_column, columns=numerical_columns)
-
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
