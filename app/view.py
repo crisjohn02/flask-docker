@@ -13,6 +13,7 @@ import base64
 from collections import defaultdict
 import scipy.stats
 from scipy.stats import ttest_ind
+from scipy.stats import pearsonr
 
 app = Flask(__name__)
 
@@ -472,11 +473,32 @@ def compute_Ttest():
         return render_template('Ttest.html', crosstab_config=crosstab_config, head_cell_count=head_cell_count, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
 
 
+
+def calculate_correlation(df_numerical):
+        correlation_matrix = df_numerical.corr(method='pearson')
+        return correlation_matrix
+
+def generate_scatter_plot_base64(df, x_column, y_column, pearson_correlation=None):
+        plt.figure(figsize=(10, 8))
+        sns.scatterplot(data=df, x=x_column, y=y_column)
+        plt.xlabel(x_column)
+        plt.ylabel(y_column)
+        plt.title(f'Scatter Plot of {x_column} vs {y_column}')        
+        plt.text(2.5, 0, f'Pearson Correlation Coefficient: { pearson_correlation }', fontsize=15, color='black')
+        plt.tight_layout()
+        
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plt.close()
+        buf.seek(0)
+        image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return image_base64
+
 @app.route('/correlation')
 def correlation():
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT url_data FROM records")
         data = cur.fetchall()
         cur.close()
 
@@ -488,21 +510,52 @@ def correlation():
         for column in df.columns:
             df[column] = preprocess_data(df[column])
 
-        # Convert string values to numerical types (int or float)
+        # Convert string values to numerical types, if not already done
         df = df.apply(convert_to_numeric)
 
-        # Get unique column names
-        columns = df.columns.tolist()
+        # Pass numerical columns to the template for the user to select from
+        numerical_columns = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
 
-        # Filter out non-categorical string columns
-        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+        return render_template('correlation.html', columns=numerical_columns)
 
-        # Load the crosstab configuration file
-        with open('static/crosstab_config.json', 'r') as config_file:
-            crosstab_config = json.load(config_file)
+@app.route('/compute_correlation', methods=['POST'])
+def compute_correlation():
+        # Get selected columns from the form
+        x_column = request.form.get('x_column')
+        y_column = request.form.get('y_column')
 
-        # Pass the column names to the template
-        return render_template('correlation.html', crosstab_config=crosstab_config, columns=categorical_columns)
+        # Fetch and preprocess the data again
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT url_data FROM records")
+        data = cur.fetchall()
+        cur.close()
+
+        # Convert JSON data to DataFrame and preprocess
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+        df = df.apply(convert_to_numeric)
+
+        scatter_plot_base64 = None
+        pearson_correlation = None
+
+        if x_column and y_column:
+            # Ensure columns are numeric for Pearson correlation
+            if df[x_column].dtype in ['float64', 'int64'] and df[y_column].dtype in ['float64', 'int64']:
+                # Compute the Pearson correlation coefficient
+                correlation, p_value = pearsonr(df[x_column].dropna(), df[y_column].dropna())
+                pearson_correlation = f"{correlation:.3f}"
+
+                # Generate scatter plot and encode to base64
+                scatter_plot_base64 = generate_scatter_plot_base64(df, x_column, y_column, pearson_correlation)
+
+        # Re-fetch the numerical columns for form repopulation
+        numerical_columns = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+
+        # Pass the base64 encoded image, Pearson correlation, column selections, and numerical columns back to the template
+        return render_template('correlation.html', scatter_plot=scatter_plot_base64, pearson_correlation=pearson_correlation, x_column=x_column, y_column=y_column, columns=numerical_columns)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
