@@ -168,6 +168,30 @@ def test():
     data = cur.fetchall()
     cur.close()
 
+    cur2 = mysql.connection.cursor()
+    cur2.execute("SELECT `config` FROM `cross-tabs` WHERE `survey_id`=414")
+    data2 = cur2.fetchone()
+    cur2.close()
+
+    crosstab = json.loads(data2[0])
+    rows = crosstab['rows']
+
+    return render_template('dump.html', variable=json.dumps(rows))
+    filtered_data = []
+
+    for row in rows:
+        for entry in data:
+            field_entry = json.loads(entry[0])
+            filtered_entry = {}
+            for setting in row:
+                return render_template('dump.html', variable=json.dumps(setting))
+                variable = setting['variable']
+                values = [str(item['value']) for item in row['values']]
+                if variable in field_entry and str(field_entry[variable]) in values:
+                    filtered_entry[variable] = field_entry[variable]
+            filtered_data.append(filtered_entry)
+    return render_template('dump.html', variable=json.dumps(filtered_data))
+
     # Convert JSON data to DataFrame
     parsed_data = []
     for json_string in data:
@@ -179,8 +203,8 @@ def test():
     df = pd.DataFrame(parsed_data)
 
     # Specify column names for chi-square test
-    column1 = 'a3'
-    column2 = 'a14'
+    column1 = 'Age_group'
+    column2 = 'a3'
 
     desired_columns = [column1, column2]
     counts_table = get_counts_table(df, desired_columns)
