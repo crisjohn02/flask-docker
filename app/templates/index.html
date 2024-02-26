@@ -1,28 +1,89 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Table</title>
-</head>
-<body>
-    <h1>Data Table</h1>
+{% extends 'layout.html' %}
+{% block title %}
+Visualization
+{% endblock %}
+{% block content %}
+<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+<div class="container">
+    <h1 class="text-3xl font-bold mb-4">Data Visualization</h1>
 
-    <!-- Dropdown menu to select column names -->
-    <form action="/column_data" method="post">
-        <label for="column">Select Column:</label>
-        <select name="column" id="column">
-            {% for col in columns %}
-            <option value="{{ col }}">{{ col }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit">Submit</button>
+
+
+    <!-- Dropdown menus to select column and visualization type -->
+    <form  action="/visualize_data" method="post" >
+        <div class="flex flex-wrap mb-2">
+            <label for="column" class="mr-2">Select Column:</label>
+            <select name="column" id="column" >
+                {% for col in columns %}
+                <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="visualization" class="mr-2">Select Visualization:</label>
+            <select name="visualization" id="visualization" >
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="pie">Pie</option>
+                <option value="histogram">Histogram</option>
+            </select>
+        </div>
+        <button type="submit" class="custom-button">Visualize</button>
     </form>
 
-    <!-- Display the plot -->
-    {% if plot_path %}
-    <h2>Counts of Unique Values for {{ selected_column }}</h2>
-    <img src="{{ plot_path }}" alt="Plot">
+    <!-- Display the visualization above the table -->
+    <div class="mb-6">
+        {% if visualization %}
+            <h2 class="text-xl font-bold mb-2">Visualization</h2>
+            <img src="{{ visualization }}" alt="Visualization" class="max-w-full mb-4" style="max-width: 100%; height: auto;">
+        {% endif %}
+    </div>
+
+    <!-- Display the data in a table -->
+    {% if column_data %}
+    <h2 class="text-xl font-bold mb-2">{{ column_label }}</h2>
+    <table class="table-auto">
+        <thead>
+            <tr>
+                <th class="border border-gray-300 px-4 py-2">Value</th>
+                <th class="border border-gray-300 px-4 py-2">Count</th>
+                <th class="border border-gray-300 px-4 py-2">Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for value, count, percentage in column_data %}
+            <tr>
+                <td class="border border-gray-300 px-4 py-2">{{ value }}</td>
+                <td class="border border-gray-300 px-4 py-2">{{ count }}</td>
+                <td class="border border-gray-300 px-4 py-2">{{ percentage }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% endif %}
-</body>
-</html>
+
+
+    <!-- Toast message -->
+<div id="toast" class="toast fixed bottom-5 left-5 bg-red-500 text-white px-4 py-2 rounded-md shadow-md hidden">
+    Cannot plot: selected column does not contain numeric data
+</div>
+
+<!-- JavaScript to show/hide the toast message -->
+<script>
+    document.getElementById("visualizationForm").addEventListener("submit", function(event) {
+        // Check if selected visualization type is "histogram"
+        var visualizationType = document.getElementById("visualization").value;
+        if (visualizationType == "histogram") {
+            // Show toast message
+            var toast = document.getElementById("toast");
+            toast.classList.remove("hidden");
+            // Prevent form submission
+            event.preventDefault();
+        }
+    });
+</script>
+</div>
+
+
+
+
+{% endblock %}

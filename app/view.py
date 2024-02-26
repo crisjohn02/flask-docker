@@ -1,15 +1,20 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session
 from flask_mysqldb import MySQL
+from flask import make_response
+import csv
 import pandas as pd
 import os
 import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy
-from scipy.stats import chi2_contingency
-from io import BytesIO
+import io
+import base64
+from collections import defaultdict
+import scipy.stats
 
 app = Flask(__name__)
+app.secret_key = 'doms'
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
@@ -20,38 +25,50 @@ app.config['MYSQL_DB'] = 'fluent'
 # Initialize MySQL
 mysql = MySQL(app)
 
-# Function to preprocess data and combine "None" and "null" values
+# Function to preprocess data and exclude "null" values
 def preprocess_data(data):
-    return [val if val not in ['None', 'null'] else None for val in data]
+    return [val if val != "null" else None for val in data]
 
-@app.route('/')
-def home():
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0 LIMIT 10")
-    data = cur.fetchall()
-    cur.close()
+# Function to convert string values to numerical types (int or float)
+def convert_to_numeric(data):
+    try:
+        return pd.to_numeric(data)
+    except ValueError:
+        return data
 
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
+# Function to check if a column contains non-categorical string values
+def is_categorical(column):
+    try:
+        pd.to_numeric(column)
+        return True
+    except ValueError:
+        unique_values = column.unique()
+        return len(unique_values) <= 10 and all(isinstance(val, str) for val in unique_values)
 
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
+# Function to preprocess data based on the crosstab_config.json file
+def preprocess_with_config(data, column, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    variable_info = next((x for x in config['rows'] + config['columns'] if x['variable'] == column), None)
+    if variable_info:
+        values_mapping = {item['value']: item['label'] for item in variable_info['values']}
+        return data.replace(values_mapping)
+    else:
+        return data
 
-    # Get unique column names
-    columns = df.columns.tolist()
+def get_column_label(column_name, config_file_path):
+    with open(config_file_path, 'r') as config_file:
+        config = json.load(config_file)
 
-    # Pass the column names to the template
-    return render_template('index.html', columns=columns)
+    variable_info = next((x for x in config['rows'] + config['columns'] if x['variable'] == column_name), None)
+    if variable_info:
+        return variable_info['name']
+    else:
+        return column_name
 
-
-@app.route('/column_data', methods=['POST'])
-def column_data():
-    # Get the selected column name from the form
-    selected_column = request.form['column']
-
+@app.route('/index')
+def index():
     # Fetch data from the database
     cur = mysql.connection.cursor()
     cur.execute("SELECT `url_data` FROM `records`")
@@ -66,40 +83,136 @@ def column_data():
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
-    # Get unique values from the selected column
-    column_data = df[selected_column].value_counts()
+    # Convert string values to numerical types (int or float)
+    df = df.apply(convert_to_numeric)
 
-    # Combine "None" and "null" values
-    if None in column_data.index:
-        column_data['None/null'] = column_data[None]
-        column_data.drop(None, inplace=True)
-
-    # Calculate percentages
-    total_count = column_data.sum()
-    column_data_percentage = (column_data / total_count) * 100
-
-    # Create a bar plot
-    sns.set(style="whitegrid")
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=column_data.index, y=column_data)
-    plt.title(f'Counts of Unique Values for {selected_column}')
-    plt.xlabel(selected_column)
-    plt.ylabel('Count')
-
-    # Add percentages to the bars if data exists
-    if not column_data.empty:
-        for i, v in enumerate(column_data):
-            plt.text(i, v + 0.5, f'{v} ({column_data_percentage[i]:.2f}%)', ha='center', va='bottom')
-
-    # Save the plot as a file
-    plot_path = 'static/plot.png'
-    plt.savefig(plot_path)
+    # Apply preprocessing based on the crosstab_config.json file
+    for column in df.columns:
+        df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
 
     # Get unique column names
     columns = df.columns.tolist()
 
-    # Pass the plot path and column names to the template
-    return render_template('index.html', plot_path=plot_path, selected_column=selected_column, columns=columns)
+    # Get unique values for each column
+    unique_values = {column: df[column].unique().tolist() for column in df.columns}
+
+    # Filter out non-categorical string columns
+    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+    # Load the crosstab configuration file
+    with open('static/crosstab_config.json', 'r') as config_file:
+        crosstab_config = json.load(config_file)
+
+    # Pass the column names to the template
+    return render_template('index.html', columns=columns, categorical_columns=categorical_columns, unique_values=unique_values, crosstab_config=crosstab_config)
+
+@app.route('/')
+def home():
+   
+    # Pass the column names to the template
+    return render_template('dashboard.html')
+
+@app.route('/visualize_data', methods=['POST'])
+def visualize_data():
+    try:
+        # Get the selected column name and visualization type from the form
+        selected_column = request.form['column']
+        visualization_type = request.form['visualization']
+
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
+
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
+
+        # Apply preprocessing based on the crosstab_config.json file
+        for column in df.columns:
+            df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
+
+        # Get data for the selected column
+        column_data = df[selected_column]
+
+        # Get column names
+        columns = df.columns.tolist()
+
+        # Get unique values for each column
+        unique_values = {column: df[column].unique().tolist() for column in df.columns}
+
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+        # Get the label for the selected column based on the config file
+        column_label = get_column_label(selected_column, 'static/crosstab_config2.json')
+
+        # Prepare data for the table
+        if not column_data.empty:
+            column_data = preprocess_with_config(column_data, selected_column, 'static/crosstab_config2.json')
+            column_value_counts = column_data.value_counts()
+            total_count = len(column_data)
+            column_data_table = [(value, count, f"{(count / total_count) * 100:.2f}%") for value, count in column_value_counts.items()]
+        else:
+            column_data_table = []
+
+        # Generate the visualization based on the selected type
+        plt.figure(figsize=(14, 8))  # Adjust the figure size as needed
+
+        if visualization_type == 'bar':
+            sns.countplot(x=selected_column, data=df, order=df[selected_column].value_counts().index)
+            for i, v in enumerate(df[selected_column].value_counts()):
+                plt.text(i, v + 0.5, str(v), ha='center')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+            plt.ylabel('Count', fontsize=12)
+            plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for better readability
+        elif visualization_type == 'line':
+            df[selected_column].value_counts().sort_index().plot(kind='line', marker='o')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+            plt.ylabel('Count', fontsize=12)
+        elif visualization_type == 'pie':
+            value_counts = df[selected_column].value_counts()
+            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%')
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+        elif visualization_type == 'histogram':
+            df[selected_column].plot(kind='hist', bins=10)
+            plt.xlabel(column_label, fontsize=12)  # Use the label from the config file
+            plt.ylabel('Frequency', fontsize=12)
+
+        plt.tight_layout()  # Adjust layout for better spacing
+
+
+        # Save the visualization to a buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+
+        # Convert the image to base64 and encode it
+        visualization = base64.b64encode(buf.getvalue()).decode('utf-8')
+
+        # Pass the encoded image to the template
+        visualization_uri = f"data:image/png;base64,{visualization}"
+
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
+
+        # Pass the visualization URI, column names, table data, and other data to the template
+        return render_template('index.html', visualization=visualization_uri, categorical_columns=categorical_columns, unique_values=unique_values, column_label=column_label, selected_column=selected_column, crosstab_config=crosstab_config, columns=columns, column_data=column_data_table,)
+    except Exception as e:
+        error_message = 'Selected column does not contain numeric data'
+        flash(f'Error: {error_message}', 'error')  # Flash the error message
+        print(f'Flashed message: {error_message}')  # Print the flashed message for debugging
+        return redirect(url_for('index'))  # Redirect back to the index page
+
 
 @app.route('/crosstabs')
 def crosstabs():
@@ -117,124 +230,108 @@ def crosstabs():
     for column in df.columns:
         df[column] = preprocess_data(df[column])
 
+    # Convert string values to numerical types (int or float)
+    df = df.apply(convert_to_numeric)
+
     # Get unique column names
     columns = df.columns.tolist()
 
+    # Filter out non-categorical string columns
+    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+    # Load the crosstab configuration file
+    with open('static/crosstab_config.json', 'r') as config_file:
+        crosstab_config = json.load(config_file)
+
     # Pass the column names to the template
-    return render_template('crosstabs.html', columns=columns)
+    return render_template('crosstabs.html', crosstab_config=crosstab_config, columns=categorical_columns)
 
 @app.route('/compute_crosstab', methods=['POST'])
 def compute_crosstab():
-    # Get selected column names and computation method from the form
-    column_for_columns = request.form['column_for_columns']
-    column_for_rows = request.form['column_for_rows']
-    computation_method = request.form['computation_method']
+    try:
+        # Get selected column names and computation method from the form
+        column_for_columns = request.form['column_for_columns']
+        column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
+        computation_method = request.form['computation_method']
 
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records`")
+        data = cur.fetchall()
+        cur.close()
 
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
 
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
 
-    # Filter DataFrame based on selected columns
-    df_selected = df[[column_for_columns, column_for_rows]]
+        # Convert string values to numerical types (int or float)
+        df = df.apply(convert_to_numeric)
 
-    # Perform computation based on the selected method
-    if computation_method == 'chi_square':
-        # Perform Chi Square computation
-        contingency_table = pd.crosstab(df_selected[column_for_rows], df_selected[column_for_columns])
-        chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
-        result = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof}
-    else:
-        result = "Invalid computation method"
+        # Apply preprocessing based on the crosstab_config.json file
+        for column in df.columns:
+            df[column] = preprocess_with_config(df[column], column, 'static/crosstab_config2.json')
 
-    # Pass the result and selected columns to the template
-    return render_template('crosstabs.html', result=result, column_for_columns=column_for_columns, column_for_rows=column_for_rows, computation_method=computation_method)
+        # Filter DataFrame based on selected columns
+        df_selected = df[[column_for_columns] + column_for_rows]
 
+        # Get unique column names
+        columns = df.columns.tolist()
 
-@app.route('/test')
-def test():
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
-    data = cur.fetchall()
-    cur.close()
+        # Filter out non-categorical string columns
+        categorical_columns = [col for col in df.columns if is_categorical(df[col])]
 
-    cur2 = mysql.connection.cursor()
-    cur2.execute("SELECT `config` FROM `cross-tabs` WHERE `survey_id`=414")
-    data2 = cur2.fetchone()
-    cur2.close()
+        # Calculate the total value of the selected column
+        total_column_value = df[column_for_columns].count()
 
-    crosstab = json.loads(data2[0])
-    rows = crosstab['rows']
+        # Perform computation based on the selected method
+        result = {}
+        if computation_method == 'chi_square':
+            # Perform Chi Square computation
+            result = {}
+            for selected_row in column_for_rows:
+                # Calculate the frequency counts of unique values in selected_row
+                selected_row_counts = df[selected_row].value_counts()
+                total_selected_row_count = selected_row_counts.sum()
 
-    return render_template('dump.html', variable=json.dumps(rows))
-    filtered_data = []
+                # Calculate the percentage of each value in selected_row
+                selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
+                selected_row_percentage_sum = selected_row_percentage.sum()
 
-    for row in rows:
-        for entry in data:
-            field_entry = json.loads(entry[0])
-            filtered_entry = {}
-            for setting in row:
-                return render_template('dump.html', variable=json.dumps(setting))
-                variable = setting['variable']
-                values = [str(item['value']) for item in row['values']]
-                if variable in field_entry and str(field_entry[variable]) in values:
-                    filtered_entry[variable] = field_entry[variable]
-            filtered_data.append(filtered_entry)
-    return render_template('dump.html', variable=json.dumps(filtered_data))
+                contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
+                chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
+                
+                # Separate frequency and percentage in breakdown table
+                breakdown_table = contingency_table.copy()
+                breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
+                breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
+                
+                # Add sum of rows and columns to the breakdown tables
+                breakdown_table['Total'] = breakdown_table.sum(axis=1)
+                breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
+                breakdown_table.loc['Total'] = breakdown_table.sum()
 
-    # Convert JSON data to DataFrame
-    parsed_data = []
-    for json_string in data:
-        parsed_json = {key: value for key, value in json.loads(json_string[0]).items() if value is not None and value != 'null'}
-    # Convert remaining values to strings
-        parsed_json_str = {key: str(value) for key, value in parsed_json.items()}
-        parsed_data.append(parsed_json_str)
+                breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
+                
+                result[selected_row] = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof, 
+                                        'breakdown_table_frequency': breakdown_table, 
+                                        'breakdown_table_percentage': breakdown_table_percentage,
+                                        'selected_row_counts': selected_row_counts,
+                                        'total_selected_row_count': total_selected_row_count,
+                                        'selected_row_percentage': selected_row_percentage}
 
-    df = pd.DataFrame(parsed_data)
+        # Load the crosstab configuration file
+        with open('static/crosstab_config.json', 'r') as config_file:
+            crosstab_config = json.load(config_file)
 
-    # Specify column names for chi-square test
-    column1 = 'Age_group'
-    column2 = 'a3'
-
-    desired_columns = [column1, column2]
-    counts_table = get_counts_table(df, desired_columns)
-
-    # # Create a contingency table (counts)
-    contingency_table = pd.crosstab(df[column1], df[column2])
-
-    contingency_table_percentage = pd.crosstab(df[column1], df[column2], margins=True, normalize='index') * 100
-    contingency_table_percentage_html = contingency_table_percentage.to_html()
-
-    contingency_table_html = contingency_table.to_html()
-
-    # # Perform chi-square test
-    chi2, p, dof, expected = chi2_contingency(contingency_table)
-
-    expected_df = pd.DataFrame(expected, index=contingency_table.index, columns=contingency_table.columns)
-
-    # excel_buffer = BytesIO()
-    # contingency_table.to_excel(excel_buffer, index=True)
-    # excel_buffer.seek(0)
-    # return send_file(excel_buffer, attachment_filename='cross_tabulation.xlsx', as_attachment=True)
-
-    return render_template('test2.html', df=df, chi2=chi2, p=p, dof=dof, expected_df=expected_df, contingency_table=contingency_table, counts_table=counts_table, contingency_table_html=contingency_table_html, contingency_table_percentage_html=contingency_table_percentage_html)
-
-# Function to get counts table
-def get_counts_table(df, columns):
-    counts = {}
-    for column in columns:
-        counts[column] = df[column].dropna().astype(str).value_counts().to_dict()
-    return counts
+        # Pass the result and selected columns to the template
+        return render_template('crosstabs.html', crosstab_config=crosstab_config, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=categorical_columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    except ValueError as e:
+        error_message = 'An error occurred: ' + str(e)
+        return render_template('crosstabs.html', error_message=error_message, crosstab_config=crosstab_config, columns=categorical_columns)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
