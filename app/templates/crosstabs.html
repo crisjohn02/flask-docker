@@ -90,7 +90,7 @@ Crosstabs
 
         // Function to download CSV file
         function downloadCsv(filename, csvData) {
-            var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            var blob = new Blob(["\uFEFF"+csvData], { type: 'text/csv;charset=utf-8;' });
             if (navigator.msSaveBlob) { // IE 10+
                 navigator.msSaveBlob(blob, filename);
             } else {

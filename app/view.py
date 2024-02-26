@@ -20,8 +20,8 @@ app.secret_key = 'doms'
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
-app.config['MYSQL_USER'] = 'dan'
-app.config['MYSQL_PASSWORD'] = 'dan'
+app.config['MYSQL_USER'] = 'local'
+app.config['MYSQL_PASSWORD'] = 'secret'
 app.config['MYSQL_DB'] = 'fluent'
 
 # Initialize MySQL
@@ -73,7 +73,7 @@ def get_column_label(column_name, config_file_path):
 def index():
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
     data = cur.fetchall()
     cur.close()
 
@@ -123,7 +123,7 @@ def visualize_data():
 
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -222,7 +222,7 @@ def visualize_data():
 def crosstabs():
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
     data = cur.fetchall()
     cur.close()
 
@@ -260,7 +260,7 @@ def compute_crosstab():
 
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -341,7 +341,7 @@ def compute_crosstab():
 def anova():
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
     data = cur.fetchall()
     cur.close()
 
@@ -371,7 +371,7 @@ def anova_result():
     if request.method == 'POST':
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -406,7 +406,7 @@ def anova_result():
 def Ttest():
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT url_data FROM records")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -443,7 +443,7 @@ def compute_Ttest():
 
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT url_data FROM records")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -533,7 +533,7 @@ def compute_Ttest():
 def correlations():
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
     data = cur.fetchall()
     cur.close()
 
@@ -578,7 +578,7 @@ def compute_correlation():
 
     # Fetch and preprocess the data again
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
     data = cur.fetchall()
     cur.close()
 
