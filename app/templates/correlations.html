@@ -1,0 +1,91 @@
+{% extends 'layout.html' %}
+{% block title %}
+Correlation Computation
+{% endblock %}
+{% block content %}
+
+
+
+<script>
+
+function saveImage() {
+    // Get the scatter plot image element
+    var image = document.getElementById('scatter_plot_img');
+    if (!image) {
+        alert('No scatter plot image found.');
+        return;
+    }
+    
+    // Extract Base64 encoded image data from the src attribute
+    var imageData = image.src.split(',')[1];
+    
+    // Create a temporary link for downloading
+    var link = document.createElement('a');
+    link.href = 'data:image/png;base64,' + imageData;
+    link.download = 'Scatter_Plot.png';
+    
+
+    // Create a text node for Pearson correlation coefficient
+    var pearsonCorrelationText = document.createTextNode('Pearson Correlation Coefficient: {{ pearson_correlation }}');
+    link.appendChild(document.createElement('br')); // Add line break
+    link.appendChild(pearsonCorrelationText); // Append Pearson correlation coefficient text
+    
+    // Trigger a click event to initiate download
+    link.click();
+}
+
+</script>
+
+<div class="container">
+    <h1>Correlation Calculation</h1>
+
+    <form action="{{ url_for('compute_correlation') }}" method="POST">
+        <label for="x_column">Select X Column:</label>
+        <select name="x_column" id="x_column">
+            {% for column in columns %}
+            <option value="{{ column }}" {% if column == x_column %}selected{% endif %}>{{ column }}</option>
+            {% endfor %}
+        </select>
+    
+        <label for="y_column">Select Y Column:</label>
+        <select name="y_column" id="y_column">
+            {% for column in columns %}
+            <option value="{{ column }}" {% if column == y_column %}selected{% endif %}>{{ column }}</option>
+            {% endfor %}
+        </select>
+    
+        <button class="custom-button" type="submit">Generate Scatter Plot</button>
+    </form>
+
+    {% if scatter_plot %}
+    <div style="text-align: center;">
+        <h2>Scatter Plot of {{ x_column }} vs {{ y_column }}</h2>
+        <img id="scatter_plot_img" src="data:image/png;base64,{{ scatter_plot }}" alt="Scatter Plot"">
+        {% if pearson_correlation %}
+        <br>
+        <table class="table-auto">
+            <thead>
+                <tr>
+                    <th class="border border-gray-300 px-4 py-2">Pearson Correlation Coefficient:</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">{{ pearson_correlation }}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    
+    {% else %}
+    <p style="text-align: center;">No scatter plot available. Please select different columns.</p>
+    {% endif %}
+
+        <BR>
+    <button class="custom-button" onclick="saveImage()">Save Scatter Plot Image</button>
+</div>
+
+
+{% endblock %}

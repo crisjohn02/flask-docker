@@ -7,8 +7,6 @@ Visualization
 <div class="container">
     <h1 class="text-3xl font-bold mb-4">Data Visualization</h1>
 
-
-
     <!-- Dropdown menus to select column and visualization type -->
     <form  action="/visualize_data" method="post" >
         <div class="flex flex-wrap mb-2">
@@ -40,7 +38,7 @@ Visualization
 
     <!-- Display the data in a table -->
     {% if column_data %}
-    <h2 class="text-xl font-bold mb-2">{{ column_label }}</h2>
+    <h2 class="text-xl font-bold mb-2">Data Table</h2>
     <table class="table-auto">
         <thead>
             <tr>
@@ -82,8 +80,5 @@ Visualization
     });
 </script>
 </div>
-
-
-
 
 {% endblock %}
