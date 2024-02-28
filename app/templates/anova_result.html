@@ -1,0 +1,45 @@
+{% extends 'layout.html' %}
+{% block title %}
+Home
+{% endblock %}
+{% block content %}
+
+
+
+   
+    <div class="container">
+    {% if anova_result %}
+    <div>
+        <h1>ANOVA Result:</h1>
+        <p>F-value: {{ anova_result.statistic }}</p>
+        <p>P-value: {{ anova_result.pvalue }}</p>
+    </div>
+    {% endif %}
+
+    {% if summary is not none %}
+    <h2>Summary</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Count</th>
+                <th>Sum</th>
+                <th>Average</th>
+                <th>Variance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for index, row in summary.iterrows() %}
+            <tr>
+                <td>{{ index }}</td>
+                <td>{{ row['count'] }}</td>
+                <td>{{ row['Sum']}}</td>
+                <td>{{ row['mean'] }}</td>
+                <td>{{ row['std']**2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}

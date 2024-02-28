@@ -14,6 +14,7 @@ from collections import defaultdict
 import scipy.stats
 from scipy.stats import ttest_ind
 from scipy.stats import pearsonr
+from scipy.stats import f_oneway
 
 app = Flask(__name__)
 
@@ -73,7 +74,7 @@ def get_column_label(column_name, config_file_path):
 def index():
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
     data = cur.fetchall()
     cur.close()
 
@@ -114,6 +115,12 @@ def home():
     # Pass the column names to the template
     return render_template('dashboard.html')
 
+@app.route('/analysis_tool')
+def analysis_tool():
+   
+    # Pass the column names to the template
+    return render_template('analysis_tool.html')
+
 @app.route('/flow')
 def flow():
    
@@ -129,7 +136,7 @@ def visualize_data():
 
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -222,7 +229,7 @@ def visualize_data():
 def crosstabs():
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -259,7 +266,7 @@ def compute_crosstab():
 
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -349,7 +356,7 @@ def compute_crosstab():
 def Ttest():
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT `url_data` FROM `records`")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -498,7 +505,7 @@ def generate_scatter_plot_base64(df, x_column, y_column, pearson_correlation=Non
 def correlation():
         # Fetch data from the database
         cur = mysql.connection.cursor()
-        cur.execute("SELECT url_data FROM records")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -526,7 +533,7 @@ def compute_correlation():
 
         # Fetch and preprocess the data again
         cur = mysql.connection.cursor()
-        cur.execute("SELECT url_data FROM records")
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
         data = cur.fetchall()
         cur.close()
 
@@ -556,6 +563,70 @@ def compute_correlation():
         # Pass the base64 encoded image, Pearson correlation, column selections, and numerical columns back to the template
         return render_template('correlation.html', scatter_plot=scatter_plot_base64, pearson_correlation=pearson_correlation, x_column=x_column, y_column=y_column, columns=numerical_columns)
 
+@app.route('/anova', methods=['GET'])
+def anova():
+    # Fetch data from the database
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
+    data = cur.fetchall()
+    cur.close()
+
+    # Convert JSON data to DataFrame
+    data_dicts = [json.loads(row[0]) for row in data]
+    df = pd.DataFrame(data_dicts)
+
+    # Preprocess data to combine "None" and "null" values
+    for column in df.columns:
+        df[column] = preprocess_data(df[column])
+
+    # Convert string values to numerical types (int or float)
+    df = df.apply(convert_to_numeric)
+
+    # Get unique column names
+    columns = df.columns.tolist()
+
+    # Filter out non-categorical string columns
+    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
+
+    # Pass the column names to the template
+    return render_template('anova.html', columns=categorical_columns)
+
+
+@app.route('/anova_result', methods=['POST', 'GET'])
+def anova_result():
+    if request.method == 'POST':
+        # Fetch data from the database
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT `url_data` FROM `records` WHERE `survey_code`='lQuDql' AND `status`='cp' AND `test_id`=0")
+        data = cur.fetchall()
+        cur.close()
+
+        # Convert JSON data to DataFrame
+        data_dicts = [json.loads(row[0]) for row in data]
+        df = pd.DataFrame(data_dicts)
+
+        # Select specific columns for ANOVA computation
+        selected_columns = request.form.getlist('columns')
+
+        # Preprocess data to combine "None" and "null" values
+        for column in df.columns:
+            df[column] = preprocess_data(df[column])
+
+        # Convert string values to numeric types (int or float)
+        df = df.apply(convert_to_numeric)
+
+        # Compute ANOVA
+        anova_result = f_oneway(df[selected_columns[0]], df[selected_columns[1]], df[selected_columns[2]])
+
+        # Calculate summary statistics
+        summary = df[selected_columns].describe().T
+        summary['Sum'] = df[selected_columns].sum() 
+
+        return render_template('anova_result.html', anova_result=anova_result, summary=summary)
+
+    else:
+        # Handle GET request (if necessary)
+        return "Please submit the form."
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

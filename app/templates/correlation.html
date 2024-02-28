@@ -8,6 +8,20 @@ Correlation
 
 
 
+<style>
+    .container {
+        width: 100%;
+        max-width: 1200px; /* Adjust as needed */
+        margin: 0 auto; /* Center the container */
+    }
+
+    .center-image {
+        max-width: 100%; /* Make the image responsive */
+        height: auto; /* Maintain aspect ratio */
+        display: block; /* Ensure proper alignment */
+        margin: 0 auto; /* Center the image */
+    }
+</style>
 
 <script>
 
@@ -39,6 +53,7 @@ Correlation
     
     </script>
     
+    
     <div class="container">
         <h1>Correlation Calculation</h1>
     
@@ -59,12 +74,15 @@ Correlation
         
             <button class="custom-button" type="submit">Generate Scatter Plot</button>
         </form>
-    
+     
         {% if scatter_plot %}
-        <div style="text-align: center;">
+        
             <h2>Scatter Plot of {{ x_column }} vs {{ y_column }}</h2>
-            <img id="scatter_plot_img" src="data:image/png;base64,{{ scatter_plot }}" alt="Scatter Plot"">
+            <div style="text-align: center;">
+            <img id="scatter_plot_img" src="data:image/png;base64,{{ scatter_plot }}" alt="Scatter Plot" class="center-image">
             {% if pearson_correlation %}
+            </div>
+        
             <br>
             <table class="table-auto">
                 <thead>
@@ -79,7 +97,9 @@ Correlation
                 </tbody>
             </table>
             {% endif %}
-        </div>
+
+       
+   
     
         
         {% else %}

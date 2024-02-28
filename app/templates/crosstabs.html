@@ -90,7 +90,7 @@ Crosstabs
 
         // Function to download CSV file
         function downloadCsv(filename, csvData) {
-            var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            var blob = new Blob(["\uFEFF"+csvData], { type: 'text/csv;charset=utf-8;' });
             if (navigator.msSaveBlob) { // IE 10+
                 navigator.msSaveBlob(blob, filename);
             } else {
@@ -183,13 +183,13 @@ Crosstabs
         </div>
 
         <!-- Button to add a new row option -->
-        <button class="custom-button" type="button" onclick="addRowOption()">Add Row Option</button>
+        <button class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 dark:focus:ring-purple-800 shadow-lg shadow-purple-500/50 dark:shadow-lg dark:shadow-purple-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2" type="button" onclick="addRowOption()">Add Row Option</button>
         <br>
 
         <!-- Hidden input for computation method (fixed to Chi Square) -->
         <input type="hidden" name="computation_method" value="chi_square">
 
-        <button type="submit" class="custom-button">Compute Crosstab</button>
+        <button type="submit" class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 dark:focus:ring-purple-800 shadow-lg shadow-purple-500/50 dark:shadow-lg dark:shadow-purple-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2">Compute Crosstab</button>
     </form>
 
     <!-- Display the computation result -->
@@ -311,7 +311,7 @@ Crosstabs
 </div>
 
 
- <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
+ <button class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 dark:focus:ring-purple-800 shadow-lg shadow-purple-500/50 dark:shadow-lg dark:shadow-purple-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2" onclick="exportCsv()">Export to CSV</button>
 
    
 </div>

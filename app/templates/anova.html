@@ -1,0 +1,49 @@
+{% extends 'layout.html' %}
+{% block title %}
+Home
+{% endblock %}
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANOVA</title>
+</head>
+<body>
+
+<div class="container">
+    <h1>ANOVA</h1>
+    
+    <form action="/anova_result" method="post">
+        <label for="column1">Select Column 1:</label>
+        <select name="columns" id="column1">
+            {% for column in columns %}
+            <option value="{{ column }}">{{ column }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="column2">Select Column 2:</label>
+        <select name="columns" id="column2">
+            {% for column in columns %}
+            <option value="{{ column }}">{{ column }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="column3">Select Column 3:</label>
+        <select name="columns" id="column3">
+            {% for column in columns %}
+            <option value="{{ column }}">{{ column }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="custom-button" type="submit">Compute ANOVA</button>
+    </form>
+</div>
+ 
+
+    
+</html>
+
+{% endblock %}
