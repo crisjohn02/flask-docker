@@ -20,8 +20,8 @@ app.secret_key = 'doms'
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
-app.config['MYSQL_USER'] = 'local'
-app.config['MYSQL_PASSWORD'] = 'secret'
+app.config['MYSQL_USER'] = 'dan'
+app.config['MYSQL_PASSWORD'] = 'dan'
 app.config['MYSQL_DB'] = 'fluent'
 
 # Initialize MySQL
@@ -389,8 +389,15 @@ def anova_result():
         # Convert string values to numeric types (int or float)
         df = df.apply(convert_to_numeric)
 
-        # Compute ANOVA
-        anova_result = f_oneway(df[selected_columns[0]], df[selected_columns[1]], df[selected_columns[2]])
+        # Create a list to store the data for each selected column
+        data = []
+
+        # Iterate over each selected column and append its data to the 'data' list
+        for column in selected_columns:
+            data.append(df[column])
+
+        # Perform ANOVA using the collected data
+        anova_result = f_oneway(*data)
 
         # Calculate summary statistics
         summary = df[selected_columns].describe().T
@@ -561,7 +568,6 @@ def generate_scatter_plot_base64(df, x_column, y_column, pearson_correlation=Non
     plt.title(f'Scatter Plot of {x_column} vs {y_column}')        
     plt.text(23, -9, f'Pearson Correlation Coefficient: { pearson_correlation }', fontsize=15, color='black')
     plt.tight_layout()
-    
     buf = io.BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight')
     plt.close()

@@ -1,14 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANOVA</title>
-</head>
-<body>
-    <h1>ANOVA</h1>
+{% extends 'layout.html' %}
+{% block title %}
+ANOVA
+{% endblock %}
+{% block content %}
+
     
-    <form action="/anova_result" method="post">
+<h1>ANOVA</h1>
+
+<div class="container">
+    <form action="/anova_result" method="post" id="anova_form">
         <label for="column1">Select Column 1:</label>
         <select name="columns" id="column1">
             {% for column in columns %}
@@ -30,7 +30,79 @@
             {% endfor %}
         </select>
 
+        <div id="additional_inputs">
+            <!-- Additional input fields will be added here -->
+        </div>
+
         <button type="submit">Compute ANOVA</button>
+        <button type="button" onclick="addInput()">Add Input</button>
     </form>
-</body>
-</html>
+</div>
+
+
+<div class="container">
+    {% if anova_result %}
+    <div>
+        <h1>ANOVA Result</h1>
+    </div>
+    {% endif %}
+
+    {% if summary is not none %}
+    <h2>Summary</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Count</th>
+                <th>Sum</th>
+                <th>Average</th>
+                <th>Variance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for index, row in summary.iterrows() %}
+            <tr>
+                <td>{{ index }}</td>
+                <td>{{ row['count'] }}</td>
+                <td>{{ row['Sum']}}</td>
+                <td>{{ row['mean']|round(2) }}</td>
+                <td>{{ (row['std']**2)|round(2) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+<br>
+    <div>
+        {% set significance = "significant" if anova_result.pvalue < 0.05 else "not significant" %}
+        <p>The ANOVA result shows an F-value of {{ anova_result.statistic|round(2) }} and a corresponding p-value of {{ anova_result.pvalue|round(2) }}, indicating that the differences between group means are {{ significance }}.</p>
+    </div>
+</div>
+
+
+<script>
+    function addInput() {
+        var inputsContainer = document.getElementById('additional_inputs');
+        var nextIdNumber = inputsContainer.children.length + 4; // Start from column4 onwards
+        var label = document.createElement('label');
+        label.setAttribute('for', 'column' + nextIdNumber);
+        label.textContent = 'Select Column ' + nextIdNumber + ':';
+        var select = document.createElement('select');
+        select.setAttribute('name', 'columns');
+        select.setAttribute('id', 'column' + nextIdNumber);
+        var columns = JSON.parse('{{ columns|tojson|safe }}');
+        for (var i = 0; i < columns.length; i++) {
+            var option = document.createElement('option');
+            option.value = columns[i];
+            option.textContent = columns[i];
+            select.appendChild(option);
+        }
+        var inputDiv = document.createElement('div');
+        inputDiv.appendChild(label);
+        inputDiv.appendChild(select);
+        inputsContainer.appendChild(inputDiv);
+    }
+</script>
+
+
+{% endblock %}

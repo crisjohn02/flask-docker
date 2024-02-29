@@ -8,17 +8,23 @@ Visualization
     <h1 class="text-3xl font-bold mb-4">Data Visualization</h1>
 
     <!-- Dropdown menus to select column and visualization type -->
-    <form  action="/visualize_data" method="post" >
+    <form id="visualizationForm" action="/visualize_data" method="post">
         <div class="flex flex-wrap mb-2">
             <label for="column" class="mr-2">Select Column:</label>
-            <select name="column" id="column" >
-                {% for col in columns %}
-                <option value="{{ col }}">{{ col }}</option>
+            <select name="column" id="column">
+                {% for col, info in column_info.items() %}
+                    {% if info %}
+                        {% if info.data_type %}
+                            <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                        {% else %}
+                            <option value="{{ col }}">{{ info.name }}</option>
+                        {% endif %}
+                    {% endif %}
                 {% endfor %}
-            </select>
+            </select>            
 
             <label for="visualization" class="mr-2">Select Visualization:</label>
-            <select name="visualization" id="visualization" >
+            <select name="visualization" id="visualization">
                 <option value="bar">Bar</option>
                 <option value="line">Line</option>
                 <option value="pie">Pie</option>
@@ -50,9 +56,16 @@ Visualization
         <tbody>
             {% for value, count, percentage in column_data %}
             <tr>
-                <td class="border border-gray-300 px-4 py-2">{{ value }}</td>
+                <td class="border border-gray-300 px-4 py-2">
+                    {% set label = get_label_for_value(selected_column, value, 'static/survey_config.json') %}
+                    {% if label == value %}
+                        {{ value }}
+                    {% else %}
+                        ({{ value }}) {{ label }}
+                    {% endif %}
+                </td>                
                 <td class="border border-gray-300 px-4 py-2">{{ count }}</td>
-                <td class="border border-gray-300 px-4 py-2">{{ percentage }}</td>
+                <td class="border border-gray-300 px-4 py-2">{{ percentage|round(2) }}%</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -60,25 +73,5 @@ Visualization
     {% endif %}
 
 
-    <!-- Toast message -->
-<div id="toast" class="toast fixed bottom-5 left-5 bg-red-500 text-white px-4 py-2 rounded-md shadow-md hidden">
-    Cannot plot: selected column does not contain numeric data
 </div>
-
-<!-- JavaScript to show/hide the toast message -->
-<script>
-    document.getElementById("visualizationForm").addEventListener("submit", function(event) {
-        // Check if selected visualization type is "histogram"
-        var visualizationType = document.getElementById("visualization").value;
-        if (visualizationType == "histogram") {
-            // Show toast message
-            var toast = document.getElementById("toast");
-            toast.classList.remove("hidden");
-            // Prevent form submission
-            event.preventDefault();
-        }
-    });
-</script>
-</div>
-
 {% endblock %}

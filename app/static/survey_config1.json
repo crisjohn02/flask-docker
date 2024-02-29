@@ -1,0 +1,1515 @@
+{
+    "survey": [
+        {
+            "name": "Survey consent",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Yes",
+                    "value": 1
+                },
+                {
+                    "label": "No",
+                    "value": 2
+                }
+            ],
+            "variable": "a1"
+        },
+        {
+            "name": "Age",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Child",
+                    "value": 1
+                },
+                {
+                    "label": "Child",
+                    "value": 2
+                },
+                {
+                    "label": "Child",
+                    "value": 3
+                },
+                {
+                    "label": "Parents",
+                    "value": 4
+                }
+            ],
+            "variable": "a2"
+        },
+        {
+            "name": "Gender",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                },
+                {
+                    "label": "Non-Binary",
+                    "value": 3
+                },
+                {
+                    "label": "Prefer not to say",
+                    "value": 4
+                }
+            ],
+            "variable": "a3"
+        },
+        {
+            "name": "Gender1",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                },
+                {
+                    "label": "Non-Binary",
+                    "value": 3
+                },
+                {
+                    "label": "Prefer not to say",
+                    "value": 4
+                }
+            ],
+            "variable": "Gender"
+        },
+        {
+            "name": "Gender2",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                },
+                {
+                    "label": "Non-Binary",
+                    "value": 3
+                },
+                {
+                    "label": "Prefer not to say",
+                    "value": 4
+                }
+            ],
+            "variable": "Gender2"
+        },
+        {
+            "name": "Parents who have children 12-18",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Yes",
+                    "value": 1
+                },
+                {
+                    "label": "No",
+                    "value": 2
+                }
+            ],
+            "variable": "a4"
+        },
+        {
+            "name": "Age of the child answering the questionnaire",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Group 1: 12 -14",
+                    "value": 1
+                },
+                {
+                    "label": "Group 2: 15 - 16",
+                    "value": 2
+                },
+                {
+                    "label": "Group 3: 17 - 18",
+                    "value": 3
+                }
+            ],
+            "variable": "a5"
+        },
+        {
+            "name": "Instruction to ask the child to complete the questionnaire",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Yes",
+                    "value": 1
+                },
+                {
+                    "label": "No",
+                    "value": 2
+                }
+            ],
+            "variable": "a6"
+        },
+        {
+            "name": "Gender of the child answering the questionnaire",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                },
+                {
+                    "label": "Non-binary",
+                    "value": 3
+                },
+                {
+                    "label": "Prefer not to say",
+                    "value": 4
+                }
+            ],
+            "variable": "a7"
+        },
+        {
+            "name": "Social media platforms",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Facebook",
+                    "value": 1
+                },
+                {
+                    "label": "Snapchat",
+                    "value": 2
+                },
+                {
+                    "label": "Pinterest",
+                    "value": 3
+                },
+                {
+                    "label": "YouTube",
+                    "value": 4
+                },
+                {
+                    "label": "Instagram",
+                    "value": 5
+                },
+                {
+                    "label": "WhatsApp",
+                    "value": 6
+                },
+                {
+                    "label": "WhatsApp",
+                    "value": 7
+                },
+                {
+                    "label": "Reddit",
+                    "value": 8
+                },
+                {
+                    "label": "Twitter",
+                    "value": 9
+                },
+                {
+                    "label": "TikTok",
+                    "value": 10
+                },
+                {
+                    "label": "Nextdoor",
+                    "value": 11
+                },
+                {
+                    "label": "QarZone",
+                    "value": 12
+                }
+            ],
+            "variable": "a8"
+        },
+        {
+            "name": "Facebook",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_1"
+        },
+        {
+            "name": "Snapchat",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_2"
+        },
+        {
+            "name": "Pinterest",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_3"
+        },
+        {
+            "name": "Youtube",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_4"
+        },
+        {
+            "name": "Instagram",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_5"
+        },
+        {
+            "name": "Whatsapp",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_6"
+        },
+        {
+            "name": "Whatsapp",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_7"
+        },
+        {
+            "name": "Reddit",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_8"
+        },
+        {
+            "name": "Twitter",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_9"
+        },
+        {
+            "name": "Tiktok",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_10"
+        },
+        {
+            "name": "Nextdoor",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_11"
+        },
+        {
+            "name": "QarZone",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "Less frequently",
+                    "value": 2
+                },
+                {
+                    "label": "Every month",
+                    "value": 3
+                },
+                {
+                    "label": "Every Week",
+                    "value": 4
+                },
+                {
+                    "label": "Few minutes a day",
+                    "value": 5
+                },
+                {
+                    "label": "Few hours a day",
+                    "value": 6
+                },
+                {
+                    "label": "Every hour",
+                    "value": 7
+                }
+            ],
+            "variable": "a8_12"
+        },  
+
+        {
+            "name": "Social media usage reasons",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Playing games",
+                    "value": 1
+                },
+                {
+                    "label": "Showing my friends where I am",
+                    "value": 2
+                },
+                {
+                    "label": "Showing my friends what clothes I have bought",
+                    "value": 3
+                },
+                {
+                    "label": "Catching up on sports news",
+                    "value": 4
+                },
+                {
+                    "label": "Catching up on the news",
+                    "value": 5
+                },
+                {
+                    "label": "Checking for school news",
+                    "value": 6
+                },
+                {
+                    "label": "Watching Video Tutorials",
+                    "value": 7
+                },
+                {
+                    "label": "Listening to music",
+                    "value": 8
+                },
+                {
+                    "label": "Meeting new people",
+                    "value": 9
+                },
+                {
+                    "label": "Sharing my opinions",
+                    "value": 10
+                },
+                {
+                    "label": "Online shopping",
+                    "value": 11
+                },
+                {
+                    "label": "Watching funny videos",
+                    "value": 12
+                },
+                {
+                    "label": "Talking to strangers",
+                    "value": 13
+                },
+                {
+                    "label": "Researching what products to buy",
+                    "value": 14
+                },
+                {
+                    "label": "Connecting with family and friends",
+                    "value": 15
+                },
+                {
+                    "label": "Following celebrities",
+                    "value": 16
+                },
+                {
+                    "label": "Applying for jobs",
+                    "value": 17
+                },
+                {
+                    "label": "Earning money",
+                    "value": 18
+                },
+                {
+                    "label": "Health advice",
+                    "value": 19
+                },
+                {
+                    "label": "Watching music videos",
+                    "value": 20
+                },
+                {
+                    "label": "Video calling family and friends",
+                    "value": 21
+                }
+            ],
+            "variable": "a9"
+        },
+        {
+            "name": "Playing games",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_1"
+        },
+        {
+            "name": "Showing my friends where I am",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_2"
+        },
+        {
+            "name": "Showing my friends what clothes I have bought",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_3"
+        },
+        {
+            "name": "Catching up on sports news",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_4"
+        },
+        {
+            "name": "Catching up on the news",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_5"
+        },
+        {
+            "name": "Checking for school news",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_6"
+        },
+        {
+            "name": "Watching Video Tutorials",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_7"
+        },
+        {
+            "name": "Listening to music",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_8"
+        },
+        {
+            "name": "Meeting new people",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_9"
+        },
+        {
+            "name": "Sharing my opinions",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_10"
+        },
+        {
+            "name": "Online shopping",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_11"
+        },
+        {
+            "name": "Watching funny videos",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_12"
+        },
+        {
+            "name": "Talking to strangers ",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_13"
+        },
+        {
+            "name": "Researching what products to buy ",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_14"
+        },
+        {
+            "name": "Connecting with family and friends",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_15"
+        },
+        {
+            "name": "Following celebrities",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_16"
+        },
+        {
+            "name": "Applying for jobs",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_17"
+        },
+        {
+            "name": "Earning money",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_18"
+        },
+        {
+            "name": "Health advice",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_19"
+        },
+        {
+            "name": "Watching music videos",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_20"
+        },
+        {
+            "name": "Video calling family and friends.",
+            "data_type": "Nominal",
+            "values":[
+                {
+                    "label": "Yes",
+                    "value": 0
+                },
+                {
+                    "label": "No",
+                    "value": 1
+                }
+            ],
+            "variable": "a9_21"
+        },
+        {
+            "name": "Ethnicity",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "White British",
+                    "value": 1
+                },
+                {
+                    "label": "Mixed or multiple ethnic groups",
+                    "value": 2
+                },
+                {
+                    "label": "Asian or Asian British",
+                    "value": 3
+                },
+                {
+                    "label": "Black, African, Caribbean, Black British",
+                    "value": 4
+                },
+                {
+                    "label": "Other ethnic group",
+                    "value": 5
+                },
+                {
+                    "label": "Rather not say",
+                    "value": 6
+                }
+            ],
+            "variable": "a10"
+        },
+        {
+            "name": "Year in School",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Year 8", 
+                    "value": 1
+                },
+                {
+                    "label": "Year 9", 
+                    "value": 2
+                },
+                {
+                    "label": "Year 10", 
+                    "value": 3
+                },
+                {
+                    "label": "Year 11", 
+                    "value": 4
+                },
+                {
+                    "label": "Year 12", 
+                    "value": 5
+                },
+                {
+                    "label": "Year 13", 
+                    "value": 6
+                },
+                {
+                    "label": "Not in school", 
+                    "value": 7
+                }
+            ],
+            "variable": "a11"
+        },
+        {
+            "name": "Height",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "4'  OR 1.22m", 
+                    "value": 1
+                },
+                {
+                    "label": "4' 1 OR 1.24m", 
+                    "value": 2
+                },
+                {
+                    "label": "4' 2 OR 1.27m", 
+                    "value": 3
+                },
+                {
+                    "label": "4' 3 OR 1.30m", 
+                    "value": 4
+                },
+                {
+                    "label": "4' 4 OR 1.32m", 
+                    "value": 5
+                },
+                {
+                    "label": "4' 5 OR 1.35m", 
+                    "value": 6
+                },
+                {
+                    "label": "4' 6 OR 1.37m", 
+                    "value": 7
+                },
+                {
+                    "label": "4' 7 OR 1.40m", 
+                    "value": 8
+                },
+                {
+                    "label": "4' 8 OR 1.42m", 
+                    "value": 9
+                },
+                {
+                    "label": "4' 9 OR 1.45m", 
+                    "value": 10
+                },
+                {
+                    "label": "4' 10 OR 1.47m", 
+                    "value": 11
+                },
+                {
+                    "label": "4' 11 OR 1.50m", 
+                    "value": 12
+                },
+                {
+                    "label": "5'  OR 1.52m", 
+                    "value": 13
+                },
+                {
+                    "label": "5' 1 OR 1.55m", 
+                    "value": 14
+                },
+                {
+                    "label": "5' 2 OR 1.57m", 
+                    "value": 15
+                },
+                {
+                    "label": "5' 3 OR 1.60m", 
+                    "value": 16
+                },
+                {
+                    "label": "5' 4 OR 1.63m", 
+                    "value": 17
+                },
+                {
+                    "label": "5' 5 OR 1.65m", 
+                    "value": 18
+                },
+                {
+                    "label": "5' 6 OR 1.68m", 
+                    "value": 19
+                },
+                {
+                    "label": "5' 7 OR 1.70m", 
+                    "value": 20
+                },
+                {
+                    "label": "5' 8 OR 1.73m", 
+                    "value": 21
+                },
+                {
+                    "label": "5' 9 OR 1.75m", 
+                    "value": 22
+                },
+                {
+                    "label": "5' 10 OR 1.78m", 
+                    "value": 23
+                },
+                {
+                    "label": "5' 11 OR 1.80m", 
+                    "value": 24
+                },
+                {
+                    "label": "6'  OR 1.83m", 
+                    "value": 25
+                },
+                {
+                    "label": "6' 1 OR 1.85m", 
+                    "value": 26
+                },
+                {
+                    "label": "6' 2 OR 1.88m", 
+                    "value": 27
+                },
+                {
+                    "label": "6' 3 OR 1.91m", 
+                    "value": 28
+                },
+                {
+                    "label": "6' 4 OR 1.93m", 
+                    "value": 29
+                },
+                {
+                    "label": "6' 5 OR 1.96m", 
+                    "value": 30
+                },
+                {
+                    "label": "6' 6 OR 1.98m", 
+                    "value": 31
+                },
+                {
+                    "label": "6' 7 OR 2.01m", 
+                    "value": 32
+                },
+                {
+                    "label": "6' 8 OR 2.03m", 
+                    "value": 33
+                },
+                {
+                    "label": "6' 9 OR 2.06m", 
+                    "value": 34
+                },
+                {
+                    "label": "6' 10 OR 2.08m", 
+                    "value": 35
+                },
+                {
+                    "label": "6' 11 OR 2.11m", 
+                    "value": 36
+                },
+                {
+                    "label": "7'  OR 2.13m", 
+                    "value": 37
+                }
+            ],
+            "variable": "a12"
+        },
+        {
+            "name": "Weight",
+            "data_type": "Ratio",
+            "variable": "a13"    
+        },
+        {
+            "name": "Exercise",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Never", 
+                    "value": 1
+                },
+                {
+                    "label": "1 or 2 times a week", 
+                    "value": 2
+                },
+                {
+                    "label": "3 times a week", 
+                    "value": 3
+                },
+                {
+                    "label": "More than 3 times a week", 
+                    "value": 4
+                }
+            ],
+            "variable": "a14"
+        },
+        {
+            "name": "Dietary requirements",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Vegan", 
+                    "value": 1
+                },
+                {
+                    "label": "Vegetarian", 
+                    "value": 2
+                },
+                {
+                    "label": "Gluten Free", 
+                    "value": 3
+                },
+                {
+                    "label": "Pescatarian", 
+                    "value": 4
+                },
+                {
+                    "label": "Dairy Free", 
+                    "value": 5
+                },
+                {
+                    "label": "None of the above", 
+                    "value": 6
+                }
+            ],
+            "variable": "a15"
+        },
+        {
+            "name": "Handedness",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Left-handed", 
+                    "value": 1
+                },
+                {
+                    "label": "Right-handed", 
+                    "value": 2
+                }
+            ],
+            "variable": "a16"
+        },
+        {
+            "name": "Home",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label": "Left-handed",
+                    "value": "L"
+                },
+                {
+                    "label": "Right-handed",
+                    "value": "R"
+                }
+            ],
+            "variable": "home"
+        },        
+        {
+            "name": "Non-binary allocation",
+            "data_type": "Nominal",
+            "variable": "a17"
+        },
+        {
+            "name": "Enjoyment",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Very enjoyable to complete", 
+                    "value": 1
+                },
+                {
+                    "label": "Quite enjoyable to complete", 
+                    "value": 2
+                },
+                {
+                    "label": "Neither enjoyable nor unenjoyable", 
+                    "value": 3
+                },
+                {
+                    "label": "Not enjoyable to complete", 
+                    "value": 4
+                },
+                {
+                    "label": "Not at all enjoyable to complete", 
+                    "value": 5
+                }
+            ],
+            "variable": "j1"
+        },
+        {
+            "name": "Ease",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Very easy to complete", 
+                    "value": 1
+                },
+                {
+                    "label": "Quite easy to complete", 
+                    "value": 2
+                },
+                {
+                    "label": "Neither easy nor difficult to complete", 
+                    "value": 3
+                },
+                {
+                    "label": "Quite difficult to complete", 
+                    "value": 4
+                },
+                {
+                    "label": "Very difficult to complete", 
+                    "value": 5
+                }
+            ],
+            "variable": "j2"
+        },
+        {
+            "name": "Survey comments",
+            "data_type": "Nominal",
+            "variable": "j3"
+        },
+        {
+            "name": "BMI",
+            "data_type": "Nominal",
+            "variable": "bmi"
+        },
+        {
+            "name": "BMI Values",
+            "data_type": "Nominal",
+            "variable": "bmi_value"
+        },
+        {
+            "name": "PP",
+            "data_type": "Nominal",
+            "variable": "pp"
+        },
+        {
+            "name": "Age_group",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "Group 1: 12 -14",
+                    "value": 1
+                },
+                {
+                    "label": "Group 2: 15 - 16",
+                    "value": 2
+                },
+                {
+                    "label": "Group 3: 17 - 18",
+                    "value": 3
+                }
+            ],
+            "variable": "Age_group"
+        },
+        {
+            "name": "Body_Mass_Index",
+            "data_type": "Ordinal",
+            "values": [
+                {
+                    "label": "BMI 1: Underweight < 18.5",
+                    "value": 1
+                },
+                {
+                    "label": "BMI 2: Normal weight 18.5 - 25",
+                    "value": 2
+                },
+                {
+                    "label": "BMI 3: Overweight 25 - 30",
+                    "value": 3
+                },
+                {
+                    "label": "BMI 4: Obese > 30",
+                    "value": 4
+                }
+            ],
+            "variable": "Body_Mass_Index"
+        },
+        {
+            "name": "Panel",
+            "data_type": "Nominal",
+            "values": [
+                {
+                    "label":  "One",
+                    "value": 1
+                },
+                {
+                    "label": "Two",
+                    "value": 2
+                },
+                {
+                    "label": "Three",
+                    "value": 3
+                }
+            ],
+            "variable": "Panel"
+        }
+    ]
+}

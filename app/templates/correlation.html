@@ -1,0 +1,90 @@
+{% extends 'layout.html' %}
+{% block title %}
+Correlation
+{% endblock %}
+{% block content %}
+
+
+<script>   
+    // Function to handle adding a new row option
+    function addRowOption() {
+        var columnForRowsDiv = document.getElementById('column_for_rows_div');
+        var newRowOption = document.createElement('div');
+        newRowOption.className = 'row-option';
+        newRowOption.innerHTML = '<label>Select Column for Rows:</label><select name="column_for_rows" class="column-for-rows">' + 
+                                 '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
+        columnForRowsDiv.appendChild(newRowOption);
+    }
+
+</script>
+
+
+<div class="container">
+    <h1>Correlation</h1>
+
+     <!-- Error message for column equality -->
+     <div id="error-message" class="error-message"></div>
+
+    <!-- Form for selecting columns and computation method -->
+    <form action="/compute_correlation" method="post" onsubmit="return checkColumns()">
+        <label for="column_for_columns">Select Column for Columns:</label>
+        <select name="column_for_columns" id="column_for_columns">
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    {% if info.data_type %}
+                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                    {% else %}
+                        <option value="{{ col }}">{{ info.name }}</option>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </select>
+        <br>
+
+        <!-- Container for selecting multiple rows -->
+        <div id="column_for_rows_div">
+            <div class="row-option">
+                <label>Select Column for Rows:</label>
+                <select name="column_for_rows" class="column-for-rows">
+                    {% for col, info in column_info.items() %}
+                        {% if info %}
+                            {% if info.data_type %}
+                                <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                            {% else %}
+                                <option value="{{ col }}">{{ info.name }}</option>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <br>
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button type="submit" class="custom-button" name="computation_method" value="correlation">Compute Pearson Correlation Coefficient</button>
+            <button type="submit" class="custom-button" name="computation_method" value="spearman">Compute Spearman's Rank-Order Correlation</button>
+        </div>
+    </form>
+
+    <!-- Display the correlation result -->
+    {% if result %}
+        <h2>Correlation Results</h2>
+        {% for selected_row, data in result.items() %}
+            <div style="text-align: center;">
+                <img src="{{ data.scatterplot_path }}" alt="Scatterplot for {{ column_info[selected_row].name }}" class="center">
+                <br>
+                <h5>{{ column_info[column_for_columns].name }} vs. {{ column_info[selected_row].name }}</h5>
+                {% if computation_method == 'correlation' %}
+                    <p>Pearson Correlation Coefficient: {{ data.correlation_coefficient|round(4) }}</p>
+                {% elif computation_method == 'spearman' %}
+                    <p>Spearman's Rank-Order Correlation: {{ data.correlation_coefficient|round(4) }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+
+
+</div>
+    <script src="@@path/vendor/simple-datatables/dist/umd/simple-datatables.js"></script>
+{% endblock %}

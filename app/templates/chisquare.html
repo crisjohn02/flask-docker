@@ -1,60 +1,18 @@
 {% extends 'layout.html' %}
 {% block title %}
-Crosstabs
+Chi-Square
 {% endblock %}
 {% block content %}
 
 
-<script>
-    // Function to handle error message display
-    function displayErrorMessage(message) {
-        var errorMessage = document.getElementById('error-message');
-        errorMessage.innerHTML = message;
-        errorMessage.style.display = 'block';
-        setTimeout(function() {
-            errorMessage.style.display = 'none';
-        }, 3000); // Hide error message after 3 seconds
-    }
-
-   // JavaScript function to display error message if selected columns are equal
-   function checkColumns() {
-        var columnForColumns = document.getElementById('column_for_columns').value;
-        var columnForRowsDiv = document.getElementById('column_for_rows_div');
-        var selectedRows = columnForRowsDiv.getElementsByClassName('row-option');
-        var selectedRowsValues = [];
-        
-        // Get selected rows values
-        for (var i = 0; i < selectedRows.length; i++) {
-            selectedRowsValues.push(selectedRows[i].value);
-        }
-
-        // Check if selected columns are equal
-        if (selectedRowsValues.includes(columnForColumns)) {
-            displayErrorMessage('Selected columns for comparison cannot be the same. Please choose different columns.');
-            return false;
-        }
-
-        return true;
-    }
-
-
-    // Function to display error message
-    function displayErrorMessage(message) {
-        var errorMessage = document.getElementById('error-message');
-        errorMessage.innerHTML = message;
-        errorMessage.style.display = 'block';
-        setTimeout(function() {
-            errorMessage.style.display = 'none';
-        }, 3000); // Hide error message after 3 seconds
-    }
-    
+<script>   
     // Function to handle adding a new row option
     function addRowOption() {
         var columnForRowsDiv = document.getElementById('column_for_rows_div');
         var newRowOption = document.createElement('div');
         newRowOption.className = 'row-option';
         newRowOption.innerHTML = '<label>Select Column for Rows:</label><select name="column_for_rows" class="column-for-rows">' + 
-                                 '{% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}</select><br>';
+                                 '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
         columnForRowsDiv.appendChild(newRowOption);
     }
 
@@ -90,7 +48,7 @@ Crosstabs
 
         // Function to download CSV file
         function downloadCsv(filename, csvData) {
-            var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            var blob = new Blob(["\uFEFF"+csvData], { type: 'text/csv;charset=utf-8;' });
             if (navigator.msSaveBlob) { // IE 10+
                 navigator.msSaveBlob(blob, filename);
             } else {
@@ -141,17 +99,23 @@ Crosstabs
 
 
 <div class="container">
-    <h1>Crosstabs</h1>
+    <h1>Chi-Square Test</h1>
 
      <!-- Error message for column equality -->
      <div id="error-message" class="error-message"></div>
 
     <!-- Form for selecting columns and computation method -->
-    <form action="/compute_crosstab" method="post" onsubmit="return checkColumns()">
+    <form action="/compute_chisquare" method="post" onsubmit="return checkColumns()">
         <label for="column_for_columns">Select Column for Columns:</label>
         <select name="column_for_columns" id="column_for_columns">
-            {% for col in columns %}
-            <option value="{{ col }}">{{ col }}</option>
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    {% if info.data_type %}
+                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                    {% else %}
+                        <option value="{{ col }}">{{ info.name }}</option>
+                    {% endif %}
+                {% endif %}
             {% endfor %}
         </select>
         <br>
@@ -161,8 +125,14 @@ Crosstabs
             <div class="row-option">
                 <label>Select Column for Rows:</label>
                 <select name="column_for_rows" class="column-for-rows">
-                    {% for col in columns %}
-                    <option value="{{ col }}">{{ col }}</option>
+                    {% for col, info in column_info.items() %}
+                        {% if info %}
+                            {% if info.data_type %}
+                                <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                            {% else %}
+                                <option value="{{ col }}">{{ info.name }}</option>
+                            {% endif %}
+                        {% endif %}
                     {% endfor %}
                 </select>
                 <br>
@@ -176,19 +146,19 @@ Crosstabs
         <!-- Hidden input for computation method (fixed to Chi Square) -->
         <input type="hidden" name="computation_method" value="chi_square">
 
-        <button type="submit" class="custom-button">Compute Crosstab</button>
+        <button type="submit" class="custom-button">Compute</button>
     </form>
 
     <!-- Display the computation result -->
 
  <h2>Chi-square Test Results</h2>
-
- 
  <div id="crosstab-results" style="overflow: scroll;">
     {% for selected_row in column_for_rows_list %}
         {% if result[selected_row] %}
-            {% set column_name = column_for_columns %}
-            {% set row_name = selected_row %}
+            {% set column_info_for_columns = column_info[column_for_columns] %}
+            {% set column_name = column_info_for_columns.name if column_info_for_columns is defined else column_for_columns %}        
+            {% set column_info_for_row = column_info[selected_row] %}
+            {% set row_name = column_info_for_row.name if column_info_for_row is defined else selected_row %}   
             {% set column_info = crosstab_config['columns'] | selectattr('variable', 'equalto', column_for_columns) | first %}
             {% set row_info = crosstab_config['rows'] | selectattr('variable', 'equalto', selected_row) | first %}
             {% if column_info is defined %}
@@ -205,9 +175,9 @@ Crosstabs
                         <th>All</th>
                         <th></th>
                         <th>{{ column_name }}</th>
-                        <th></th>
-                        <th></th>
-                        <th></th>
+                        {% for _ in range(result[selected_row]['breakdown_table_frequency'].shape[1] - 1) %}
+                            <th></th>
+                        {% endfor %}
                     </tr>
                     <tr>
                         <th>{{ row_name }}</th>
@@ -215,7 +185,8 @@ Crosstabs
                         <th></th>
                         <th></th>
                         {% for col_header in result[selected_row]['breakdown_table_frequency'].columns %}
-                            <th>{{ col_header }}</th>
+                            {% set label = get_label_for_value(column_for_columns, col_header, 'static/survey_config.json') %}
+                            <th>{{ label if label is not none else col_header }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -224,11 +195,15 @@ Crosstabs
                     {% set selected_row_counts = result[selected_row]['selected_row_counts'] %}
                     {% set percentage_rows = result[selected_row]['breakdown_table_percentage'].iterrows() %}
                     {% set selected_row_percentage = result[selected_row]['selected_row_percentage'] %}
+                    {% set max_value = result[selected_row]['breakdown_table_frequency'].sum(axis=1).max() %}
                     {% for i in range(result[selected_row]['breakdown_table_frequency'].shape[0]) %}
                         {% set frequency_row = frequency_rows.__next__() %}
                         {% set percentage_row = percentage_rows.__next__() %}
                         <tr class="odd">
-                            <td>{{ frequency_row[0] }}</td>
+                            <td>
+                                {% set label = get_label_for_value(selected_row, frequency_row[0], 'static/survey_config.json') %}
+                                {{ label if label is not none else frequency_row[0] }}
+                            </td>                            
                             <td>Frequency</td>
                             <td>
                                 {{ selected_row_counts[frequency_row[0]] }}
@@ -243,9 +218,8 @@ Crosstabs
                                     -
                                 {% endif %}
                             </td>
-                            
                             {% for value in frequency_row[1] %}
-                                <td>{{ value }}</td>
+                                <td style="background-color: rgba({{ 255 - (255 - 103) * (value / max_value) }}, {{ 176 + (0 - 176) * (value / max_value) }}, {{ 176 + (0 - 176) * (value / max_value) }});">{{ value }}</td>
                             {% endfor %}
                         </tr>
                         <tr class="even">
@@ -277,7 +251,7 @@ Crosstabs
                         </tr>
                     {% endfor %}
                     <tr>
-                        <td colspan="8">
+                        <td colspan="{{ result[selected_row]['breakdown_table_frequency'].shape[1] + 4 }}">
                             {% if result[selected_row] %}
                                 {% set chi_square = result[selected_row]['Chi Square'] %}
                                 {% set p_value = result[selected_row]['p-value'] %}
@@ -286,7 +260,7 @@ Crosstabs
                                 {% set p_sign = ">" if p_value > 0.05 else "<" %}
                                 {% set total_column_values = total_column_value %}
                                 
-                                The association between {{ selected_row }} and Which best describes your {{ column_for_columns }} is {{ significance }} X² ({{ total_column_values }}) = {{ '%.2f'|format(chi_square) }}, df = {{ degrees_of_freedom }}, p {{ p_sign }} .05
+                                The association between <strong>{{ row_name }}</strong> and Which best describes your  <strong>{{ column_name }}</strong> is {{ significance }} X² ({{ total_column_values }}) = {{ '%.2f'|format(chi_square) }}, df = {{ degrees_of_freedom }}, p {{ p_sign }} .05
                             {% endif %}
                         </td>
                     </tr> 
@@ -298,14 +272,8 @@ Crosstabs
 </div>
 
 
+
  <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
-
-   
 </div>
-
-
-
-
-
     <script src="@@path/vendor/simple-datatables/dist/umd/simple-datatables.js"></script>
 {% endblock %}
