@@ -4,29 +4,52 @@ ANOVA
 {% endblock %}
 {% block content %}
 
-    
 <h1>ANOVA</h1>
 
 <div class="container">
-    <form action="/anova_result" method="post" id="anova_form">
+    <form action="/compute_anova" method="post" id="anova_form">
         <label for="column1">Select Column 1:</label>
         <select name="columns" id="column1">
-            {% for column in columns %}
-            <option value="{{ column }}">{{ column }}</option>
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    <option value="{{ col }}">
+                        {% if info.data_type %}
+                            ({{ info.data_type.upper() }}) {{ info.name }}
+                        {% else %}
+                            {{ info.name }}
+                        {% endif %}
+                    </option>
+                {% endif %}
             {% endfor %}
         </select>
 
         <label for="column2">Select Column 2:</label>
         <select name="columns" id="column2">
-            {% for column in columns %}
-            <option value="{{ column }}">{{ column }}</option>
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    <option value="{{ col }}">
+                        {% if info.data_type %}
+                            ({{ info.data_type.upper() }}) {{ info.name }}
+                        {% else %}
+                            {{ info.name }}
+                        {% endif %}
+                    </option>
+                {% endif %}
             {% endfor %}
         </select>
 
         <label for="column3">Select Column 3:</label>
         <select name="columns" id="column3">
-            {% for column in columns %}
-            <option value="{{ column }}">{{ column }}</option>
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    <option value="{{ col }}">
+                        {% if info.data_type %}
+                            ({{ info.data_type.upper() }}) {{ info.name }}
+                        {% else %}
+                            {{ info.name }}
+                        {% endif %}
+                    </option>
+                {% endif %}
             {% endfor %}
         </select>
 
@@ -34,75 +57,87 @@ ANOVA
             <!-- Additional input fields will be added here -->
         </div>
 
-        <button type="submit">Compute ANOVA</button>
         <button type="button" onclick="addInput()">Add Input</button>
+        <button type="submit">Compute ANOVA</button>
     </form>
 </div>
 
-
 <div class="container">
-    {% if anova_result %}
-    <div>
-        <h1>ANOVA Result</h1>
-    </div>
+    {% if request.method == 'POST' %}
+        {% if not summary.empty %}
+        <h2>Summary</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Count</th>
+                    <th>Sum</th>
+                    <th>Average</th>
+                    <th>Variance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for index, row in summary.iterrows() %}
+                <tr>
+                    <td>{{ index }}</td>
+                    <td>{{ row['count'] }}</td>
+                    <td>{{ row['Sum']}}</td>
+                    <td>{{ row['mean']|round(2) }}</td>
+                    <td>{{ (row['std']**2)|round(2) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        <br>
+        {% if anova_result %}
+        <div>
+            <h1>ANOVA Result</h1>
+        </div>
+        <div>
+            {% set significance = "significant" if anova_result.pvalue < 0.05 else "not significant" %}
+            <p>The ANOVA result shows an F-value of {{ anova_result.statistic|round(2) }} and a corresponding p-value of {{ anova_result.pvalue|round(2) }}, indicating that the differences between group means are {{ significance }}.</p>
+        </div>
+        {% endif %}
     {% endif %}
-
-    {% if summary is not none %}
-    <h2>Summary</h2>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Column</th>
-                <th>Count</th>
-                <th>Sum</th>
-                <th>Average</th>
-                <th>Variance</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for index, row in summary.iterrows() %}
-            <tr>
-                <td>{{ index }}</td>
-                <td>{{ row['count'] }}</td>
-                <td>{{ row['Sum']}}</td>
-                <td>{{ row['mean']|round(2) }}</td>
-                <td>{{ (row['std']**2)|round(2) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-<br>
-    <div>
-        {% set significance = "significant" if anova_result.pvalue < 0.05 else "not significant" %}
-        <p>The ANOVA result shows an F-value of {{ anova_result.statistic|round(2) }} and a corresponding p-value of {{ anova_result.pvalue|round(2) }}, indicating that the differences between group means are {{ significance }}.</p>
-    </div>
 </div>
+
 
 
 <script>
     function addInput() {
         var inputsContainer = document.getElementById('additional_inputs');
-        var nextIdNumber = inputsContainer.children.length + 4; // Start from column4 onwards
+        var nextIdNumber = inputsContainer.children.length + 4; // Start from column1 onwards
         var label = document.createElement('label');
         label.setAttribute('for', 'column' + nextIdNumber);
         label.textContent = 'Select Column ' + nextIdNumber + ':';
         var select = document.createElement('select');
         select.setAttribute('name', 'columns');
         select.setAttribute('id', 'column' + nextIdNumber);
-        var columns = JSON.parse('{{ columns|tojson|safe }}');
-        for (var i = 0; i < columns.length; i++) {
+        var columnInfo = JSON.parse('{{ column_info|tojson|safe }}');
+        var columns = Object.keys(columnInfo);
+        columns.forEach(function(column) {
             var option = document.createElement('option');
-            option.value = columns[i];
-            option.textContent = columns[i];
+            option.value = column;
+            var columnName = columnInfo[column]['name'];
+            var columnDataType = columnInfo[column]['data_type'];
+            if (columnDataType) {
+                option.textContent = '(' + columnDataType.toUpperCase() + ') ' + columnName;
+            } else {
+                option.textContent = columnName;
+            }
             select.appendChild(option);
-        }
+        });
         var inputDiv = document.createElement('div');
         inputDiv.appendChild(label);
         inputDiv.appendChild(select);
         inputsContainer.appendChild(inputDiv);
     }
 </script>
+
+
+
+
 
 
 {% endblock %}

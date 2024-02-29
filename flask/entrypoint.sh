@@ -1,3 +1,3 @@
 #!/bin/sh
 
-python view1.py
+python view.py
