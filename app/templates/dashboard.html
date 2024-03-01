@@ -12,10 +12,134 @@ Home
 
 </style>
 
-<div>
-  <!-- <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br> -->
-  <h1>Welcome to the Data Analysis App</h1>
+<div class="grid grid-cols-5 max-w-full mx-auto">
+  <button class="bg-purple-700 h-[100%] ml-2 shadow rounded p-2 hover:bg-green-700 text-lg font-medium">Generate Analysis</button>
+  <button class="bg-purple-700 h-[100%] ml-2 shadow rounded p-2 hover:bg-green-700 text-lg font-medium">Export CSV</button>
 </div>
+<div class="grid grid-cols-12 p-2 max-w-full mx-auto" >
+  <!-- Forms will be appended here -->
+  
+  <div class="bg-white shadow-lg p-5 col-span-11 shadow border rounded flex w-100 gap-2 overflow-auto" id="form_container">
+      <!-- Form loop -->
+      
+      
+      
+      <!-- End of form loop -->
+  </div>
+  <div class="col-span-1">
+      <button id="addRowButton" class="bg-purple-700 h-[80%] ml-2 shadow rounded p-2 flex items-center justify-center text-lg font-medium">Add Row
+          <svg class="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 12h14m-7 7V5" />
+          </svg>
+      </button>
+    
+          <button id="deleteRowButton" class="bg-purple-700 h-[17%] ml-2 shadow rounded p-2 hover:bg-red-700 text-lg font-medium">Delete</button>
+    
+  </div>
+  
+</div>
+
+<script>
+  // Function to handle adding a new form horizontally
+  function addRowOption() {
+      var container = document.getElementById('form_container');
+      var newDiv = document.createElement('div');
+      newDiv.className = 'bg-white rounded-lg flex-none p-5 cols-span-2 shadow w-[70vmin]';
+      newDiv.innerHTML = `
+              <form action="/visualize_data" method="post">
+                  <div class="flex flex-wrap mb-2">
+                      <label for="column" class="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Select Column:</label>
+                      <select name="column" id="column">
+                          {% for col in columns %}
+                          <option value="{{ col }}">{{ col }}</option>
+                          {% endfor %}
+                      </select>
+                      <label for="visualization" class="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Select Variable Type:</label>
+                      <select name="visualization" id="visualization">
+                          <option value="bar">Independent Variable</option>
+                          <option value="line">Dependent variable</option>
+                      </select>
+                  </div>
+              </form>
+        
+      `;
+      container.insertBefore(newDiv, container.lastElementChild);
+  }
+  addRowOption();
+  addRowOption();
+
+  // Attach event listener to the button
+  document.getElementById('addRowButton').addEventListener('click', function () {
+      addRowOption();
+  });
+
+  //delete function
+  function deleteRowOption() {
+      var container = document.getElementById('form_container');
+      var rows = container.getElementsByClassName('bg-white rounded-lg flex-none p-5 cols-span-2 shadow w-[70vmin]');
+      if (rows.length > 1) { // Ensure there is at least one row remaining
+          container.removeChild(rows[rows.length - 1]); // Remove the last row
+      } else {
+          showToast('Cannot delete the last row!');
+      }
+  }
+  // Attach event listener to the Delete Row button
+  document.getElementById('deleteRowButton').addEventListener('click', function () {
+      deleteRowOption();
+  });
+
+  function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'flex items-center p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 font-medium';
+  
+  const icon = document.createElement('svg');
+  icon.className = 'flex-shrink-0 inline w-4 h-4 me-3';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  icon.setAttribute('fill', 'currentColor');
+  icon.setAttribute('viewBox', '0 0 20 20');
+  icon.innerHTML = '<path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>';
+
+  const spanSrOnly = document.createElement('span');
+  spanSrOnly.className = 'sr-only';
+ 
+
+  const divContent = document.createElement('div');
+  const spanBold = document.createElement('span');
+  const spanText = document.createElement('span');
+  spanText.textContent = message;
+
+  divContent.appendChild(spanBold);
+  divContent.appendChild(spanText);
+
+  toast.appendChild(icon);
+  toast.appendChild(spanSrOnly);
+  toast.appendChild(divContent);
+
+  document.body.appendChild(toast);
+
+  // Center the toast horizontally and vertically
+  toast.style.position = 'fixed';
+  toast.style.left = '50%';
+  toast.style.top = '50%';
+  toast.style.transform = 'translate(-50%, -50%)';
+
+  setTimeout(() => {
+      toast.style.opacity = '1';
+  }, 100);
+  setTimeout(() => {
+      toast.style.opacity = '0';
+  }, 3000);
+  setTimeout(() => {
+      document.body.removeChild(toast);
+  }, 3500);
+}
+
+ 
+  
+  </script>
   
  
  

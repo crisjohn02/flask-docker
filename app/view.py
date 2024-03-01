@@ -94,22 +94,7 @@ def utility_processor():
 
     return dict(get_label_for_value=get_label_for_value)
 
-# Function to check if a column contains non-categorical string values
-def is_categorical(column):
-    try:
-        pd.to_numeric(column)
-        return True
-    except ValueError:
-        unique_values = column.unique()
-        return len(unique_values) <= 10 and all(isinstance(val, str) for val in unique_values)
-
-@app.route('/')
-def home():
-    # Pass the column names to the template
-    return render_template('dashboard.html')
-
-@app.route('/visualize')
-def visualize():
+def load_data_and_config():
     # Get preprocessed data and categorical columns
     df = preprocessed_data(mysql.connection, 'static/survey_config.json')
 
@@ -128,9 +113,132 @@ def visualize():
         name, data_type = get_column_info(column, 'static/survey_config.json')
         if name is not None:  # Check if the column name is present in the config file
             column_info[column] = {"name": name, "data_type": data_type}
+    
+    return df, columns, column_info, crosstab_config
 
-    # Filter out non-categorical string columns
-    categorical_columns = [col for col in columns if is_categorical(df[col])]
+
+# ALL COMPUTATION
+def perform_anova(selected_columns, df):
+    # Create a list to store the data for each selected column
+    data = []
+
+    # Iterate over each selected column and append its data to the 'data' list
+    for column in selected_columns:
+        data.append(df[column])
+
+    # Perform ANOVA using the collected data
+    anova_result = f_oneway(*data)
+
+    # Calculate summary statistics
+    summary = df[selected_columns].describe().T
+    summary['Sum'] = df[selected_columns].sum()
+
+    return anova_result, summary
+
+def calculate_chi_square(df_selected, column_for_columns, selected_row, total_column_value):
+    # Calculate the frequency counts of unique values in selected_row
+    selected_row_counts = df_selected[selected_row].value_counts()
+    total_selected_row_count = selected_row_counts.sum()
+
+    # Calculate the percentage of each value in selected_row
+    selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
+
+    # Calculate the contingency table
+    contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
+    
+    # Calculate Chi Square statistics
+    chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
+    
+    # Separate frequency and percentage in breakdown table
+    breakdown_table = contingency_table.copy()
+    breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
+    breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
+    
+    # Add sum of rows and columns to the breakdown tables
+    breakdown_table['Total'] = breakdown_table.sum(axis=1)
+    breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
+    breakdown_table.loc['Total'] = breakdown_table.sum()
+    breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
+    
+    return {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof, 
+            'breakdown_table_frequency': breakdown_table, 
+            'breakdown_table_percentage': breakdown_table_percentage,
+            'selected_row_counts': selected_row_counts,
+            'total_selected_row_count': total_selected_row_count,
+            'selected_row_percentage': selected_row_percentage}
+
+def calculate_ttest(df_selected, selected_row, column_for_columns):
+    # Calculate the frequency counts of unique values in selected_row
+    selected_row_counts = df_selected[selected_row].value_counts()
+    total_selected_row_count = selected_row_counts.sum()
+
+    # Calculate the percentage of each value in selected_row
+    selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
+    
+    # Calculate the contingency table
+    contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
+
+    # Construct contingency table for t-test
+    group1 = df_selected[selected_row]
+    group2 = df_selected[column_for_columns]
+
+    # Convert Series to DataFrame
+    group1_df = group1.to_frame()
+    group2_df = group2.to_frame()
+
+    # Filter out non-numeric values from group1 and group2
+    group1_numeric = group1_df.select_dtypes(include=np.number).dropna()
+    group2_numeric = group2_df.select_dtypes(include=np.number).dropna()
+
+    # Convert Series to numpy arrays
+    group1_array = group1_numeric.to_numpy()
+    group2_array = group2_numeric.to_numpy()
+
+    # Calculate mean of each group
+    mean_group1 = group1_array.mean()
+    mean_group2 = group2_array.mean()
+
+    # Check if the variances of group1 and group2 are equal
+    if np.var(group1_array) == np.var(group2_array):
+        # Perform equal variance (pooled) t-test
+        t_statistic, p_value = scipy.stats.ttest_ind(group1_array, group2_array, equal_var=True)
+    else:
+        # Check if the total data in group1 and group2 are equal
+        if len(group1_array) == len(group2_array):
+            # Perform paired t-test
+            t_statistic, p_value = scipy.stats.ttest_rel(group1_array, group2_array)
+        else:
+            # Perform independent t-test (unequal variance t-test)
+            t_statistic, p_value = scipy.stats.ttest_ind(group1_array, group2_array, equal_var=False)
+
+    # Separate frequency and percentage in breakdown table
+    breakdown_table = contingency_table.copy()
+    breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
+    breakdown_percentage = (contingency_table.div(df_selected[column_for_columns].count(), axis=1) * 100).astype(float)
+
+    # Add sum of rows and columns to the breakdown tables
+    breakdown_table['Total'] = breakdown_table.sum(axis=1)
+    breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
+    breakdown_table.loc['Total'] = breakdown_table.sum()
+    breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
+
+    return {'t_statistic': t_statistic, 'p_value': p_value,  
+            'breakdown_table_frequency': breakdown_table, 
+            'breakdown_table_percentage': breakdown_table_percentage,
+            'selected_row_counts': selected_row_counts,
+            'total_selected_row_count': total_selected_row_count,
+            'selected_row_percentage': selected_row_percentage,
+            'mean_group1': mean_group1,'mean_group2': mean_group2}
+
+@app.route('/')
+def home():
+    # Pass the column names to the template
+    return render_template('dashboard.html')
+
+@app.route('/visualize')
+def visualize():
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Pass necessary data to the template
     return render_template('visualize.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
@@ -141,27 +249,8 @@ def visualize_data():
     selected_column = request.form['column']
     visualization_type = request.form['visualization']
 
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
-
-    # Filter out non-categorical string columns
-    categorical_columns = [col for col in columns if is_categorical(df[col])]
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Get the name and data type for the selected column based on the config file
     column_name, column_data_type = get_column_info(selected_column, 'static/survey_config.json')
@@ -211,17 +300,8 @@ def visualize_data():
     with open('static/crosstab_config.json', 'r') as config_file:
         crosstab_config = json.load(config_file)
 
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Get unique values for each column
-    unique_values = {column: df[column].unique().tolist() for column in df.columns}
-    
-    # Filter out non-categorical string columns
-    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
-
     # Calculate column data (value, count, percentage) for the selected column
-    if selected_column in categorical_columns:
+    if selected_column in columns:
         column_data = df[selected_column].value_counts().reset_index()
         column_data.columns = ['Value', 'Count']
         total_count = column_data['Count'].sum()
@@ -231,28 +311,12 @@ def visualize_data():
         column_data = None
 
     # Pass the visualization URI, column name, data type, table data, and other data to the template
-    return render_template('visualize.html', visualization=visualization_uri, column_info=column_info, column_data=column_data, column_name=column_name, column_data_type=column_data_type, selected_column=selected_column, crosstab_config=crosstab_config, columns=categorical_columns, unique_values=unique_values)
+    return render_template('visualize.html', visualization=visualization_uri, columns=columns, column_info=column_info, column_data=column_data, column_name=column_name, column_data_type=column_data_type, selected_column=selected_column, crosstab_config=crosstab_config)
 
 @app.route('/chisquare')
 def chisquare():
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-        # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Pass the column names to the template
     return render_template('chisquare.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
@@ -264,30 +328,11 @@ def compute_chisquare():
     column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
     computation_method = request.form['computation_method']
 
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Filter DataFrame based on selected columns
     df_selected = df[[column_for_columns] + column_for_rows]
-
-    # Get unique column names
-    columns = df.columns.tolist()
 
     # Calculate the total value of the selected column
     total_column_value = df[column_for_columns].count()
@@ -295,69 +340,20 @@ def compute_chisquare():
     # Perform computation based on the selected method
     result = {}
     if computation_method == 'chi_square':
-        # Perform Chi Square computation
-        result = {}
         for selected_row in column_for_rows:
-            # Calculate the frequency counts of unique values in selected_row
-            selected_row_counts = df[selected_row].value_counts()
-            total_selected_row_count = selected_row_counts.sum()
-
-            # Calculate the percentage of each value in selected_row
-            selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
-            selected_row_percentage_sum = selected_row_percentage.sum()
-
-            contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
-            chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
-            
-            # Separate frequency and percentage in breakdown table
-            breakdown_table = contingency_table.copy()
-            breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
-            breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
-            
-            # Add sum of rows and columns to the breakdown tables
-            breakdown_table['Total'] = breakdown_table.sum(axis=1)
-            breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
-            breakdown_table.loc['Total'] = breakdown_table.sum()
-
-            breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
-            
-            result[selected_row] = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof, 
-                                    'breakdown_table_frequency': breakdown_table, 
-                                    'breakdown_table_percentage': breakdown_table_percentage,
-                                    'selected_row_counts': selected_row_counts,
-                                    'total_selected_row_count': total_selected_row_count,
-                                    'selected_row_percentage': selected_row_percentage}
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
+            # Calculate Chi Square statistics
+            result[selected_row] = calculate_chi_square(df_selected, column_for_columns, selected_row, total_column_value)
 
     # Calculate maximum frequency
     maximum_frequency = df[column_for_columns].max()
 
     # Pass the result and selected columns to the template
-    return render_template('chisquare.html', crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, column_info=column_info, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    return render_template('chisquare.html', crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, column_info=column_info, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
 
 @app.route('/ttest')
 def ttest():
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Pass the column names to the template
     return render_template('Ttest.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
@@ -369,132 +365,30 @@ def compute_ttest():
     column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
     computation_method = request.form['computation_method']
 
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Filter DataFrame based on selected columns
     df_selected = df[[column_for_columns] + column_for_rows]
 
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Calculate the total value of the selected column
-    total_column_value = df[column_for_columns].count()
-
     # Perform computation based on the selected method
     result = {}
     if computation_method == 'ttest':
-        # Perform Chi Square computation
-        result = {}
         for selected_row in column_for_rows:
-            # Calculate the frequency counts of unique values in selected_row
-            selected_row_counts = df[selected_row].value_counts()
-            total_selected_row_count = selected_row_counts.sum()
-
-            # Calculate the percentage of each value in selected_row
-            selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
-            selected_row_percentage_sum = selected_row_percentage.sum()
-            contingency_table = pd.crosstab(df_selected[selected_row], df_selected[column_for_columns])
-
-            # Construct contingency table for t-test
-            group1 = df_selected[selected_row]
-            group2 = df_selected[column_for_columns]
-
-            # Convert Series to DataFrame
-            group1_df = group1.to_frame()
-            group2_df = group2.to_frame()
-
-            # Filter out non-numeric values from group1 and group2
-            group1_numeric = group1_df.select_dtypes(include=np.number).dropna()
-            group2_numeric = group2_df.select_dtypes(include=np.number).dropna()
-
-            # Convert Series to numpy arrays
-            group1_array = group1_numeric.to_numpy()
-            group2_array = group2_numeric.to_numpy()
-
-            # Calculate mean of each group
-            mean_group1 = group1_array.mean()
-            mean_group2 = group2_array.mean()
-
-            # Check if the variances of group1 and group2 are equal
-            if np.var(group1_array) == np.var(group2_array):
-                # Perform equal variance (pooled) t-test
-                t_statistic, p_value = scipy.stats.ttest_ind(group1_array, group2_array, equal_var=True)
-            else:
-                # Check if the total data in group1 and group2 are equal
-                if len(group1_array) == len(group2_array):
-                    # Perform paired t-test
-                    t_statistic, p_value = scipy.stats.ttest_rel(group1_array, group2_array)
-                else:
-                    # Perform independent t-test (unequal variance t-test)
-                    t_statistic, p_value = scipy.stats.ttest_ind(group1_array, group2_array, equal_var=False)
-
-            # Separate frequency and percentage in breakdown table
-            breakdown_table = contingency_table.copy()
-            breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
-            breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
-            
-            # Add sum of rows and columns to the breakdown tables
-            breakdown_table['Total'] = breakdown_table.sum(axis=1)
-            breakdown_table_percentage['Total'] = (breakdown_percentage.sum(axis=1))
-            breakdown_table.loc['Total'] = breakdown_table.sum()
-
-            breakdown_table_percentage.loc['Total'] = breakdown_percentage.sum()
-            
-            result[selected_row] = {'t_statistic': t_statistic, 'p_value': p_value,  
-                                    'breakdown_table_frequency': breakdown_table, 
-                                    'breakdown_table_percentage': breakdown_table_percentage,
-                                    'selected_row_counts': selected_row_counts,
-                                    'total_selected_row_count': total_selected_row_count,
-                                    'selected_row_percentage': selected_row_percentage,
-                                    'mean_group1': mean_group1,'mean_group2': mean_group2}
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
+            # Calculate t-test statistics
+            result[selected_row] = calculate_ttest(df_selected, selected_row, column_for_columns)
 
     # Calculate maximum frequency
     maximum_frequency = df[column_for_columns].max()
 
     # Pass the result and selected columns to the template
-    return render_template('Ttest.html', crosstab_config=crosstab_config, mean_group1=mean_group1, mean_group2=mean_group2, maximum_frequency=maximum_frequency, column_info=column_info, selected_row_percentage_sum=selected_row_percentage_sum, total_selected_row_count=total_selected_row_count, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    return render_template('Ttest.html',  mean_group1=result[column_for_rows[0]]['mean_group1'], mean_group2=result[column_for_rows[0]]['mean_group2'], crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, column_info=column_info, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+
 
 @app.route('/correlation')
 def correlation():
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Pass the column names to the template
     return render_template('correlation.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
@@ -506,24 +400,8 @@ def compute_correlation():
     column_for_rows = request.form.getlist('column_for_rows')  # Get list of selected rows
     computation_method = request.form['computation_method']
 
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Filter DataFrame based on selected columns
     df_selected = df[[column_for_columns] + column_for_rows]
@@ -552,10 +430,8 @@ def compute_correlation():
             # Add result to the dictionary
             result[selected_row] = {'correlation_coefficient': correlation_coefficient, 'scatterplot_path': scatterplot_path}
 
-
     # Pass the result and selected columns to the template
     return render_template('correlation.html', crosstab_config=crosstab_config, column_info=column_info, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
-
 
 # Function to compute Pearson correlation coefficient and generate scatterplot
 def compute_pearson_correlation(column1, column2, column_info):
@@ -595,69 +471,24 @@ def compute_spearman_correlation(column1, column2, column_info):
 
 @app.route('/anova')
 def anova():
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
-    
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Pass the column names to the template
     return render_template('anova.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
-
 
 @app.route('/compute_anova', methods=['POST'])
 def compute_anova():
     # Select specific columns for ANOVA computation
     selected_columns = request.form.getlist('columns')
 
-    # Get preprocessed data and categorical columns
-    df = preprocessed_data(mysql.connection, 'static/survey_config.json')
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Load the crosstab configuration file
-    with open('static/survey_config.json', 'r') as config_file:
-        crosstab_config = json.load(config_file)
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
     
-    # Prepare a dictionary to store column info (name and data type)
-    column_info = {}
-
-    # Iterate over columns to get their names and data types
-    for column in columns:
-        name, data_type = get_column_info(column, 'static/survey_config.json')
-        if name is not None:  # Check if the column name is present in the config file
-            column_info[column] = {"name": name, "data_type": data_type}
-
-    # Create a list to store the data for each selected column
-    data = []
-
-    # Iterate over each selected column and append its data to the 'data' list
-    for column in selected_columns:
-        data.append(df[column])
-
-    # Perform ANOVA using the collected data
-    anova_result = f_oneway(*data)
-
-    # Calculate summary statistics
-    summary = df[selected_columns].describe().T
-    summary['Sum'] = df[selected_columns].sum() 
+    # Perform ANOVA
+    anova_result, summary = perform_anova(selected_columns, df)
 
     return render_template('anova.html', anova_result=anova_result, summary=summary, columns=columns, column_info=column_info)
-
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
