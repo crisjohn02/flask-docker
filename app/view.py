@@ -230,6 +230,43 @@ def calculate_ttest(df_selected, selected_row, column_for_columns):
             'selected_row_percentage': selected_row_percentage,
             'mean_group1': mean_group1,'mean_group2': mean_group2}
 
+
+# Function to compute Pearson correlation coefficient and generate scatterplot
+def compute_pearson_correlation(column1, column2, column_info):
+    # Calculate Pearson correlation coefficient
+    correlation_coefficient, _ = pearsonr(column1, column2)
+
+    # Generate scatterplot
+    sns.set(style="whitegrid")  # Set style
+    plt.figure(figsize=(8, 6))  # Set figure size
+    sns.scatterplot(x=column1, y=column2)  # Create scatterplot
+    plt.title('Scatterplot')  # Set title
+    plt.xlabel(column_info[column1.name]["name"])  # Set x-axis label using column_info
+    plt.ylabel(column_info[column2.name]["name"])  # Set y-axis label using column_info
+    scatterplot_path = 'static/scatterplot.png'  # Define file path to save the scatterplot
+    plt.savefig(scatterplot_path)  # Save scatterplot to file
+    plt.close()  # Close the plot to release memory
+
+    return correlation_coefficient, scatterplot_path
+
+# Function to compute Spearman correlation coefficient and generate scatterplot
+def compute_spearman_correlation(column1, column2, column_info):
+    # Calculate Spearman correlation coefficient
+    correlation_coefficient, _ = spearmanr(column1, column2)
+
+    # Generate scatterplot
+    sns.set(style="whitegrid")  # Set style
+    plt.figure(figsize=(8, 6))  # Set figure size
+    sns.scatterplot(x=column1, y=column2)  # Create scatterplot
+    plt.title('Scatterplot')  # Set title
+    plt.xlabel(column_info[column1.name]["name"])  # Set x-axis label using column_info
+    plt.ylabel(column_info[column2.name]["name"])  # Set y-axis label using column_info
+    scatterplot_path = 'static/scatterplot.png'  # Define file path to save the scatterplot
+    plt.savefig(scatterplot_path)  # Save scatterplot to file
+    plt.close()  # Close the plot to release memory
+
+    return correlation_coefficient, scatterplot_path
+
 @app.route('/')
 def home():
     # Pass the column names to the template
@@ -432,42 +469,6 @@ def compute_correlation():
 
     # Pass the result and selected columns to the template
     return render_template('correlation.html', crosstab_config=crosstab_config, column_info=column_info, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
-
-# Function to compute Pearson correlation coefficient and generate scatterplot
-def compute_pearson_correlation(column1, column2, column_info):
-    # Calculate Pearson correlation coefficient
-    correlation_coefficient, _ = pearsonr(column1, column2)
-
-    # Generate scatterplot
-    sns.set(style="whitegrid")  # Set style
-    plt.figure(figsize=(8, 6))  # Set figure size
-    sns.scatterplot(x=column1, y=column2)  # Create scatterplot
-    plt.title('Scatterplot')  # Set title
-    plt.xlabel(column_info[column1.name]["name"])  # Set x-axis label using column_info
-    plt.ylabel(column_info[column2.name]["name"])  # Set y-axis label using column_info
-    scatterplot_path = 'static/scatterplot.png'  # Define file path to save the scatterplot
-    plt.savefig(scatterplot_path)  # Save scatterplot to file
-    plt.close()  # Close the plot to release memory
-
-    return correlation_coefficient, scatterplot_path
-
-# Function to compute Spearman correlation coefficient and generate scatterplot
-def compute_spearman_correlation(column1, column2, column_info):
-    # Calculate Spearman correlation coefficient
-    correlation_coefficient, _ = spearmanr(column1, column2)
-
-    # Generate scatterplot
-    sns.set(style="whitegrid")  # Set style
-    plt.figure(figsize=(8, 6))  # Set figure size
-    sns.scatterplot(x=column1, y=column2)  # Create scatterplot
-    plt.title('Scatterplot')  # Set title
-    plt.xlabel(column_info[column1.name]["name"])  # Set x-axis label using column_info
-    plt.ylabel(column_info[column2.name]["name"])  # Set y-axis label using column_info
-    scatterplot_path = 'static/scatterplot.png'  # Define file path to save the scatterplot
-    plt.savefig(scatterplot_path)  # Save scatterplot to file
-    plt.close()  # Close the plot to release memory
-
-    return correlation_coefficient, scatterplot_path
 
 @app.route('/anova')
 def anova():
