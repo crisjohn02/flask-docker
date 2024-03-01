@@ -78,10 +78,10 @@ Correlation
         {% if scatter_plot %}
         
             <h2>Scatter Plot of {{ x_column }} vs {{ y_column }}</h2>
-            <div style="text-align: center;">
+            
             <img id="scatter_plot_img" src="data:image/png;base64,{{ scatter_plot }}" alt="Scatter Plot" class="center-image">
             {% if pearson_correlation %}
-            </div>
+            
         
             <br>
             <table class="table-auto">

@@ -15,9 +15,15 @@ import scipy.stats
 from scipy.stats import ttest_ind
 from scipy.stats import pearsonr
 from scipy.stats import f_oneway
+from flask_cors import CORS
 
 app = Flask(__name__)
 
+app.config.from_object(__name__)
+
+CORS(app, resources={r"/*":{'origins':"*"}})
+# CORS(app, resources={r"/*":{'origins': 'https://http://localhost:8080/',"allow_headers":
+# "Access-Control-Allow-Origin"}})
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
@@ -120,6 +126,10 @@ def analysis_tool():
    
     # Pass the column names to the template
     return render_template('analysis_tool.html')
+
+@app.route('/DataAnalysis', methods=['GET'])
+def DataAnalysis():
+    return ('Finally na integrate rajud ka!.....ashdabhsidhaiushdiahdihauishdahdiuhaiushdisacloyy222222222hduhu..')
 
 @app.route('/flow')
 def flow():

@@ -1,37 +1,69 @@
-{% extends 'layout.html' %}
-{% block title %}
-Vue
-{% endblock %}
-{% block content %}
-<script setup>
-    import { ref } from 'vue'
-    
-    const message = ref('')
-    </script>
-    
- 
-        <h1>Love nako si</h1>,
-        <h2>------------------------------------------</h2>,
-    
-        <p>Message is: {{ message }}</p>
-    <input v-model="message" placeholder="edit me" />
-
-    <button @click="show = !show">Toggle</button>
-<Transition>
-  <p v-if="show">hello</p>
-</Transition>
-
-<style>
-    /* we will explain what these classes do next! */
-.v-enter-active,
-.v-leave-active {
-  transition: opacity 0.5s ease;
-}
-
-.v-enter-from,
-.v-leave-to {
-  opacity: 0;
-}
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="{{url_for('static',filename='dist/css/output.css')}}">
+   <!-- Tailwind CSS -->
+   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
    
-{% endblock %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+</head>
+<body class="font-sans antialiased">
+
+<!-- Navbar -->
+<nav class="navbar mb-6 bg-gradient-to-r from-blue-600 to-purple-500">
+    <div class="container mx-auto">
+        <div class="flex justify-between items-center py-4">
+            <!-- Logo -->
+            <div class="text-white font-semibold">
+                Logo
+            </div>
+
+            <!-- Hamburger Icon -->
+            <button id="sidebarToggle" class="text-white lg:hidden">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Sidebar -->
+<div id="sidebar"
+     class="bg-gray-900 text-white w-64 min-h-screen fixed left-0 top-0 z-50 transform -translate-x-full transition-transform duration-200 ease-in-out">
+    <div class="p-4">
+        <!-- Sidebar Content -->
+        <h2 class="text-xl font-semibold mb-4">Sidebar</h2>
+        <ul>
+            <li><a href="#" class="block py-2 px-4 text-white hover:bg-gray-700">Link 1</a></li>
+            <li><a href="#" class="block py-2 px-4 text-white hover:bg-gray-700">Link 2</a></li>
+            <li><a href="#" class="block py-2 px-4 text-white hover:bg-gray-700">Link 3</a></li>
+            <!-- Add more sidebar links as needed -->
+        </ul>
+    </div>
+</div>
+
+<!-- Content Area -->
+<div class="container mx-auto mt-16">
+    <h1 class="text-3xl font-semibold mb-4">Main Content Area</h1>
+    <!-- Add your main content here -->
+</div>
+
+<script>
+    // JavaScript to toggle the sidebar
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+
+    sidebarToggle.addEventListener('click', function () {
+        sidebar.classList.toggle('-translate-x-full');
+    });
+</script>
+
+</body>
+</html>
