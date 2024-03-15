@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Data</title>
+</head>
+<body>
+    <h1>Select Columns</h1>
+    <form action="/show_data" method="post">
+        <label for="column1">Select Column 1:</label>
+        <select name="column1" id="column1">
+            {% for column_name in column_names %}
+            <option value="{{ column_name }}">{{ column_name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <label for="column2">Select Column 2:</label>
+        <select name="column2" id="column2">
+            {% for column_name in column_names %}
+            <option value="{{ column_name }}">{{ column_name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>

@@ -1,16 +1,24 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session, make_response, Response
 from flask_mysqldb import MySQL
+import numpy as np
 import pandas as pd
-import os
-import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy
+import scipy.stats
+from scipy.stats import f_oneway, pearsonr, spearmanr, ttest_ind, chi2_contingency
+import csv
+import os
+import json
 import io
 import base64
-import numpy as np
+import socket
+import math
+from collections import defaultdict
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
@@ -21,113 +29,199 @@ app.config['MYSQL_DB'] = 'fluent'
 # Initialize MySQL
 mysql = MySQL(app)
 
-# Function to preprocess data and combine "None" and "null" values
-def preprocess_data(data):
-    return [val if val not in ['None', 'null'] else None for val in data]
+# Function to get label based on variable and value
+def get_label(variable, value, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    for item in config['survey']:
+        if item['variable'] == variable:
+            for value_item in item.get('values', []):
+                if value_item['value'] == value:
+                    return value_item['label']
+    return value  # Return original value if not found in survey config
 
-# Function to convert string values to numerical types (int or float)
-def convert_to_numeric(data):
-    try:
-        return pd.to_numeric(data)
-    except ValueError:
-        return data
-
-# Function to check if a column contains non-categorical string values
-def is_categorical(column):
-    try:
-        # Attempt to convert column values to numeric type
-        pd.to_numeric(column)
-        return True  # If successful, column is numerical
-    except ValueError:
-        # If conversion to numeric type fails, check for categorical string values
-        unique_values = column.unique()
-        return len(unique_values) <= 10 and all(isinstance(val, str) for val in unique_values)
-
-@app.route('/')
-def home():
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
-
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
-
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
-
-    # Convert string values to numerical types (int or float)
-    df = df.apply(convert_to_numeric)
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Get unique values for each column
-    unique_values = {column: df[column].unique().tolist() for column in df.columns}
-
-    # Pass the column names to the template
-    return render_template('index.html', columns=columns, unique_values=unique_values)
-
-@app.route('/visualize_data', methods=['POST'])
-def visualize_data():
-    # Get the selected column name and visualization type from the form
-    selected_column = request.form['column']
-    visualization_type = request.form['visualization']
-
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
-
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
-
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
-
-    # Convert string values to numerical types (int or float)
-    df = df.apply(convert_to_numeric)
-
-    # Get data for the selected column
-    column_data = df[selected_column]
-
-    # Prepare data for the table
-    if not column_data.empty:
-        column_value_counts = column_data.value_counts()
-        total_count = len(column_data)
-        column_data_table = [(value, count, f"{(count / total_count) * 100:.2f}%") for value, count in column_value_counts.items()]
+def process_value(value):
+    if value in (None, "null", "", "-"):
+        return None
+    elif isinstance(value, str) and value.isdigit():
+        return int(value)
     else:
-        column_data_table = []
+        return value
+
+# Function to get the name and data type of the selected column based on the config file
+def get_column_info(selected_columns, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    variable_info = next((x for x in config['survey'] if x['variable'] == selected_columns), None)
+    if variable_info:
+        name = variable_info['name']
+        data_type = variable_info.get('data_type', None)
+        return name, data_type
+    else:
+        return None, None
+
+@app.route('/alldata', methods=['GET'])
+def alldata():
+    # Fetch data from the database
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
+    cur.close()
+
+    # Process fetched data
+    data_dict = {}
+    max_length = 0  # Track the maximum length of lists
+
+    for row in rows:
+        url_data_str = row[0]
+        # Parse the string into a dictionary
+        url_data = json.loads(url_data_str)
+        for key, value in url_data.items():
+            # Check if the value is None or "null"
+            value = None if value in (None, "null", "") else value  # Replace empty values with None
+            # Convert numeric strings into integers
+            if isinstance(value, str) and value.isdigit():
+                value = int(value)
+            if key not in data_dict:
+                data_dict[key] = []
+            data_dict[key].append(value)
+            max_length = max(max_length, len(data_dict[key]))
+
+    # Pad shorter lists with None to match the length of the longest list
+    for key in data_dict:
+        data_dict[key] += [None] * (max_length - len(data_dict[key]))
+
+    # Convert dictionary to JSON and return with headers
+    response = jsonify(data_dict)
+    return response
+
+@app.route('/datalist', methods=['GET'])
+def datalist():
+    # Fetch data from the database
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
+    cur.close()
+
+    # Process fetched data
+    data_dict = {}
+    for row in rows:
+        url_data_str = row[0]
+        # Parse the string into a dictionary
+        url_data = json.loads(url_data_str)
+        for key in url_data.keys():
+            if key not in data_dict:
+                data_dict[key] = []
+
+    # Convert dictionary to the desired structure
+    question_array = list(data_dict.keys())
+
+    # Construct the response JSON
+    response_data = {"question": question_array}
+
+    # Convert dictionary to JSON and return with headers
+    response = jsonify(response_data)
+    return response
+
+@app.route('/data/<selected_data>', methods=['GET'])
+def data(selected_data):
+    # Split the selected data by comma to get individual column names
+    selected_columns = selected_data.split(',')
+
+    # Fetch data from the database
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
+    cur.close()
+
+    # Process fetched data based on selected columns
+    data_dict = {column: [] for column in selected_columns}
+    max_length = 0 
+    for row in rows:
+        url_data = json.loads(row[0])
+        for column in selected_columns:
+            value = url_data.get(column)
+            if value == "null":
+                value = None
+            elif value == "":
+                value = None
+            elif isinstance(value, str) and value.isdigit():
+                value = int(value)
+            data_dict[column].append(value)
+            max_length = max(max_length, len(data_dict[column]))
+
+    for column in data_dict:
+        data_dict[column] += [None] * (max_length - len(data_dict[column]))
+
+    # Convert dictionary to JSON and return
+    return jsonify(data_dict)
+
+@app.route('/visualize_data/<selected_data>/<visualization_type>', methods=['GET', 'POST'])
+def visualize_data(selected_data, visualization_type):
+    selected_column = selected_data.split(',')
+
+    # Fetch data from the database
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
+    cur.close()
+
+    # Process fetched data
+    data_dict = {}
+    max_length = 0  # Track the maximum length of lists
+
+    for row in rows:
+        url_data_str = row[0]
+        # Parse the string into a dictionary
+        url_data = json.loads(url_data_str)
+        for key, value in url_data.items():
+            # Check if the value is None or "null"
+            value = None if value in (None, "null", "") else value  # Replace empty values with None
+            # Convert numeric strings into integers
+            if isinstance(value, str) and value.isdigit():
+                value = int(value)
+            if key not in data_dict:
+                data_dict[key] = []
+            data_dict[key].append(value)
+            max_length = max(max_length, len(data_dict[key]))
+
+    # Pad shorter lists with None to match the length of the longest list
+    for key in data_dict:
+        data_dict[key] += [None] * (max_length - len(data_dict[key]))
+
+    df = pd.DataFrame(data_dict)
+
+    # Get the name and data type for the selected column based on the config file
+    column_name, column_data_type = get_column_info(selected_column[0], 'static/survey_config.json')
 
     # Generate the visualization based on the selected type
+    plt.figure(figsize=(8, 4))  # Adjust the figure size as needed
+
     if visualization_type == 'bar':
-        plt.figure(figsize=(10, 6))
-        sns.countplot(x=selected_column, data=df, order=df[selected_column].value_counts().index)
-        for i, v in enumerate(df[selected_column].value_counts()):
+        sns.countplot(x=selected_column[0], data=df, order=df[selected_column[0]].value_counts().index)
+        for i, v in enumerate(df[selected_column[0]].value_counts()):
             plt.text(i, v + 0.5, str(v), ha='center')
-        plt.xlabel(selected_column)
-        plt.ylabel('Count')
+        plt.xlabel(column_name, fontsize=16)  # Use the name from the config file
+        plt.ylabel('Count', fontsize=16)
+        plt.xticks(rotation=0, ha='right')  # Rotate x-axis labels for better readability
     elif visualization_type == 'line':
-        plt.figure(figsize=(10, 6))
-        df[selected_column].value_counts().sort_index().plot(kind='line', marker='o')
-        plt.xlabel(selected_column)
-        plt.ylabel('Count')
+        df[selected_column[0]].value_counts().sort_index().plot(kind='line', marker='o')
+        plt.xlabel(column_name, fontsize=16)  # Use the name from the config file
+        plt.ylabel('Count', fontsize=16)
+        plt.xticks(rotation=0, ha='right')  # Rotate x-axis labels for better readability
     elif visualization_type == 'pie':
-        plt.figure(figsize=(10, 6))
-        value_counts = df[selected_column].value_counts()
+        value_counts = df[selected_column[0]].value_counts()
         plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
-        plt.xlabel(selected_column)
+        plt.xlabel(column_name, fontsize=16)  # Use the name from the config file
     elif visualization_type == 'histogram':
-        plt.figure(figsize=(10, 6))
-        df[selected_column].plot(kind='hist', bins=10)
-        plt.xlabel(selected_column)
-        plt.ylabel('Frequency')
+        df[selected_column[0]].plot(kind='hist', bins=10)
+        plt.xlabel(column_name, fontsize=16)  # Use the label from the config file
+        plt.ylabel('Frequency', fontsize=16)
+        plt.xticks(rotation=0, ha='right')  # Rotate x-axis labels for better readability
+
+    plt.tight_layout()  # Adjust layout for better spacing
 
     # Save the visualization to a buffer
     buf = io.BytesIO()
@@ -139,124 +233,309 @@ def visualize_data():
 
     # Pass the encoded image to the template
     visualization_uri = f"data:image/png;base64,{visualization}"
+        
+    return visualization_uri
 
-    # Get column names
-    columns = df.columns.tolist()
-
-    # Pass the visualization URI, column names, table data, and other data to the template
-    return render_template('index.html', visualization=visualization_uri, selected_column=selected_column, columns=columns, column_data=column_data_table)
-
-
-@app.route('/crosstabs')
-def crosstabs():
-    # Fetch data from the database
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
-    cur.close()
-
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
-
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
-
-    # Convert string values to numerical types (int or float)
-    df = df.apply(convert_to_numeric)
-
-    # Get unique column names
-    columns = df.columns.tolist()
-
-    # Filter out non-categorical string columns
-    categorical_columns = [col for col in df.columns if is_categorical(df[col])]
-
-    # Pass the column names to the template
-    return render_template('crosstabs.html', columns=categorical_columns)
-
-@app.route('/compute_crosstab', methods=['POST'])
-def compute_crosstab():
-    # Get selected column names and computation method from the form
-    column_for_columns = request.form['column_for_columns']
-    column_for_rows = request.form['column_for_rows']
-    computation_method = request.form['computation_method']
+@app.route('/visualize_table/<selected_data>', methods=['GET', 'POST'])
+def visualize_table(selected_data):
+    selected_column = selected_data.split(',')
 
     # Fetch data from the database
     cur = mysql.connection.cursor()
-    cur.execute("SELECT `url_data` FROM `records`")
-    data = cur.fetchall()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
     cur.close()
 
-    # Convert JSON data to DataFrame
-    data_dicts = [json.loads(row[0]) for row in data]
-    df = pd.DataFrame(data_dicts)
+    # Process fetched data
+    data_dict = {}
+    max_length = 0  # Track the maximum length of lists
 
-    # Preprocess data to combine "None" and "null" values
-    for column in df.columns:
-        df[column] = preprocess_data(df[column])
+    for row in rows:
+        url_data_str = row[0]
+        # Parse the string into a dictionary
+        url_data = json.loads(url_data_str)
+        for key, value in url_data.items():
+            # Check if the value is None or "null"
+            value = None if value in (None, "null", "") else value  # Replace empty values with None
+            # Convert numeric strings into integers
+            if isinstance(value, str) and value.isdigit():
+                value = int(value)
+            if key not in data_dict:
+                data_dict[key] = []
+            data_dict[key].append(value)
+            max_length = max(max_length, len(data_dict[key]))
 
-    # Convert string values to numerical types (int or float)
-    df = df.apply(convert_to_numeric)
+    # Pad shorter lists with None to match the length of the longest list
+    for key in data_dict:
+        data_dict[key] += [None] * (max_length - len(data_dict[key]))
 
-    # Filter DataFrame based on selected columns
-    df_selected = df[[column_for_columns, column_for_rows]]
+    df = pd.DataFrame(data_dict)
 
-    # Get unique column names
-    columns = df.columns.tolist()
+    # Get the name and data type for the selected column based on the config file
+    column_name, _ = get_column_info(selected_column[0], 'static/survey_config.json')
 
-    # Initialize scatterplot_uri with a default value
-    scatterplot_uri = None
-
-    # Perform computation based on the selected method
-    if computation_method == 'chi_square':
-        # Perform Chi Square computation
-        contingency_table = pd.crosstab(df_selected[column_for_rows], df_selected[column_for_columns])
-        chi2, p, dof, expected = scipy.stats.chi2_contingency(contingency_table)
-        result = {'Chi Square': chi2, 'p-value': p, 'Degrees of Freedom': dof}
-    elif computation_method == 'anova':
-        # Perform ANOVA computation
-        result = {}
-        for group in df_selected[column_for_rows].unique():
-            group_data = df_selected[df_selected[column_for_rows] == group][column_for_columns]
-            anova_result = scipy.stats.f_oneway(group_data)
-            result[group] = {'F-value': anova_result[0], 'p-value': anova_result[1]}
-    elif computation_method == 't-test':
-        # Perform t-test computation
-        group_data1 = df_selected[df_selected[column_for_rows] == df_selected[column_for_rows].unique()[0]][column_for_columns]
-        group_data2 = df_selected[df_selected[column_for_rows] == df_selected[column_for_rows].unique()[1]][column_for_columns]
-        t_statistic, p_value = scipy.stats.ttest_ind(group_data1, group_data2)
-        result = {'t-statistic': t_statistic, 'p-value': p_value}
-    elif computation_method == 'correlation':
-        # Perform correlation computation
-        correlation_result = df_selected[[column_for_columns, column_for_rows]].corr()
-        correlation_coefficient = correlation_result.iloc[0, 1]
-        
-        # Generate scatterplot
-        plt.figure(figsize=(8, 6))
-        plt.scatter(df_selected[column_for_columns], df_selected[column_for_rows])
-        plt.xlabel(column_for_columns)
-        plt.ylabel(column_for_rows)
-        plt.title(f'Scatterplot for {column_for_rows} vs {column_for_columns}')
-        
-        # Save the scatterplot to a buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        
-        # Convert the image to base64 and encode it
-        scatterplot = base64.b64encode(buf.getvalue()).decode('utf-8')
-        
-        # Pass the encoded scatterplot to the template
-        scatterplot_uri = f"data:image/png;base64,{scatterplot}"
-        
-        result = {'Correlation Coefficient': correlation_coefficient}
-    
+    # Calculate column data (value, count, percentage) for the selected column
+    if selected_column[0] in df.columns:
+        column_data = df[selected_column[0]].value_counts().reset_index()
+        column_data.columns = [column_name, 'Count']
+        total_count = column_data['Count'].sum()
+        column_data['Percentage'] = (column_data['Count'] / total_count) * 100
+        column_data = column_data.values.tolist()
     else:
-        result = "Invalid computation method"
+        column_data = None
 
-    # Pass the result and selected columns to the template
-    return render_template('crosstabs.html', result=result, scatterplot_uri=scatterplot_uri, columns=columns, column_for_columns=column_for_columns, column_for_rows=column_for_rows, computation_method=computation_method)
+    return jsonify(column_data)
+
+    
+    
+    
+#CROSSTAB AND CHI-SQUARE API
+
+#Crosstab API for Vue.js
+def process_crosstabs(rows, independent_variables, dependent_variables):
+    data_dict = {}
+    max_length = 0
+
+    for row in rows:
+        url_data = json.loads(row[0])
+        for key, value in url_data.items():
+            if value in (None, "null", "", "-"):
+                value = None
+            elif isinstance(value, str) and value.isdigit():
+                value = int(value)
+            data_dict.setdefault(key, []).append(value)
+            max_length = max(max_length, len(data_dict[key]))
+
+    for key in data_dict:
+        data_dict[key] += [None] * (max_length - len(data_dict[key]))
+
+    df = pd.DataFrame(data_dict)
+
+    results = {}
+    for independent_var in independent_variables:
+        labels_independent = df[independent_var].apply(
+            lambda x: get_label(independent_var, x, 'static/survey_config.json'))
+        for dependent_var in dependent_variables:
+            labels_dependent = df[dependent_var].apply(lambda x: get_label(dependent_var, process_value(x),
+                                                                           'static/survey_config.json'))
+
+            crosstab_result = pd.crosstab(labels_independent, labels_dependent, margins=True, margins_name='Total')
+            crosstab_result_row_percent = pd.crosstab(labels_independent, labels_dependent, normalize='index')
+            crosstab_result_column_percent = pd.crosstab(labels_independent, labels_dependent, normalize='columns')
+            crosstab_result_total_percent = pd.crosstab(labels_independent, labels_dependent, normalize='all',
+                                                         margins=True, margins_name='Total')
+
+            # Calculate row totals
+            row_totals = crosstab_result_row_percent.sum(axis=1)
+            total_row = pd.DataFrame({'Total': [1] * len(row_totals)}, index=row_totals.index)
+            crosstab_result_row_percent = pd.concat([crosstab_result_row_percent, total_row], axis=1)
+
+            # Calculate column totals
+            column_totals = crosstab_result_column_percent.sum()
+            total_column = pd.DataFrame({'Total': [1] * len(column_totals)}, index=column_totals.index).transpose()
+            crosstab_result_column_percent = pd.concat([crosstab_result_column_percent, total_column])
+
+            chi2_stat, p_val, dof, expected = chi2_contingency(crosstab_result)
+
+            results[dependent_var] = {
+                'crosstab': crosstab_result.to_dict(),
+                'row_percentage': crosstab_result_row_percent.to_dict(),
+                'column_percentage': crosstab_result_column_percent.to_dict(),
+                'total_percentage': crosstab_result_total_percent.to_dict(),
+                'chi_square_statistic': float(chi2_stat),
+                'degrees_of_freedom': int(dof),
+                'p_value': float(p_val)
+            }
+
+    return results
+
+@app.route('/crosstabs/<independent>/<dependent>', methods=['GET', 'POST'])
+def crosstabs(independent, dependent):
+    dependent_variables = dependent.split(',')
+    independent_variables = independent.split(',')
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
+    cur.close()
+
+    results = process_crosstabs(rows, independent_variables, dependent_variables)
+
+    # Convert dictionary to JSON string
+    json_string = json.dumps(results)
+
+    # Return JSON string with proper content type
+    return Response(json_string, content_type='application/json')
+
+
+# Export to CSV API
+def process_crosstabs_csv(rows, independent_variables, dependent_variables):
+    data_dict = {}
+    max_length = 0  
+    
+    for row in rows:
+        url_data = json.loads(row[0])
+        for key, value in url_data.items():
+            if value in (None, "null", "", "-"):
+                value = None
+            elif isinstance(value, str) and value.isdigit():
+                value = int(value)
+            data_dict.setdefault(key, []).append(value)
+            max_length = max(max_length, len(data_dict[key]))
+
+    for key in data_dict:
+        data_dict[key] += [None] * (max_length - len(data_dict[key]))
+
+    df = pd.DataFrame(data_dict)
+
+    results = {}
+    independent_var_counts = {}
+    dependent_var_counts = {}
+    dependent_var_percentage = {}
+    for independent_var in independent_variables:
+        independent_var_counts[independent_var] = df[independent_var].value_counts()
+        
+        labels_independent = df[independent_var].apply(lambda x: get_label(independent_var, x, 'static/survey_config.json'))
+        for dependent_var in dependent_variables:
+            labels_dependent = df[dependent_var].apply(lambda x: get_label(dependent_var, process_value(x), 'static/survey_config.json'))
+            dependent_var_counts[dependent_var] = labels_dependent.value_counts().sort_index()  # Sorting counts by index
+            dependent_var_counts[dependent_var]['Total'] = df[dependent_var].value_counts().sum()
+            dependent_var_percentage[dependent_var] = ((dependent_var_counts[dependent_var]) / len(df[dependent_var])) * 100
+
+            crosstab_result = pd.crosstab(labels_dependent, labels_independent, margins=True, margins_name='Total')
+            crosstab_result_row_percent = pd.crosstab(labels_dependent, labels_independent, normalize='index')
+            crosstab_result_column_percent = pd.crosstab(labels_dependent, labels_independent, normalize='columns')
+            crosstab_result_total_percent = pd.crosstab(labels_dependent, labels_independent, normalize='all', margins=True, margins_name='Total')
+
+            # Calculate row totals
+            row_totals = crosstab_result_row_percent.sum(axis=1)
+            total_row = pd.DataFrame({'Total': [1] * len(row_totals)}, index=row_totals.index)
+            crosstab_result_row_percent = pd.concat([crosstab_result_row_percent, total_row], axis=1)
+
+            # Calculate column totals
+            column_totals = crosstab_result_column_percent.sum()
+            total_column = pd.DataFrame({'Total': [1] * len(column_totals)}, index=column_totals.index).transpose()
+            crosstab_result_column_percent = pd.concat([crosstab_result_column_percent, total_column])
+
+            chi2_stat, p_val, _, _ = chi2_contingency(crosstab_result)
+            degrees_of_freedom = (crosstab_result.shape[0] - 2) * (crosstab_result.shape[1] - 2)
+
+            if independent_var not in results:
+                results[independent_var] = {}
+            results[independent_var][dependent_var] = {
+                'crosstab': crosstab_result,
+                'row_percentage': crosstab_result_row_percent,
+                'column_percentage': crosstab_result_column_percent,
+                'total_percentage': crosstab_result_total_percent,
+                'chi_square_statistic': chi2_stat,
+                'degrees_of_freedom': degrees_of_freedom,
+                'p_value': p_val
+            }
+
+    return results, independent_var_counts, dependent_var_counts, dependent_var_percentage
+
+@app.route('/export_csv/<independent>/<dependent>/<csv_outputs>', methods=['GET'])
+def export_crosstabs_csv(independent, dependent, csv_outputs):
+    independent_variables = independent.split(',')
+    dependent_variables = dependent.split(',')
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
+    rows = cur.fetchall()
+    cur.close()
+
+    results, independent_var_counts, dependent_var_counts, dependent_var_percentage = process_crosstabs_csv(rows, independent_variables, dependent_variables)
+
+    # Check if csv_output parameter is valid
+    valid_outputs = ['crosstab', 'row_percentage', 'column_percentage', 'total_percentage', 'alternate_crosstab', 'chi_square_results']
+    selected_outputs = csv_outputs.split(',')
+    for output in selected_outputs:
+        if output not in valid_outputs:
+            return f"Invalid csv_output parameter: {output}", 400
+
+    # Export selected outputs to CSV
+    csv_data = []
+
+    for independent_var in independent_variables:
+        for dependent_var in dependent_variables:
+            # Retrieve names of independent and dependent variables
+            independent_name, _ = get_column_info(independent_var, 'static/survey_config.json')
+            dependent_name, _ = get_column_info(dependent_var, 'static/survey_config.json')
+
+            for csv_output in selected_outputs:
+                if csv_output == 'crosstab':
+                    # Add crosstab data
+                    crosstab = results[independent_var][dependent_var]['crosstab']
+                    dependent_labels = [''] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+
+                    csv_data.append([''] + [''] + [f"All"] + [''] + [f"{independent_name}"])
+                    csv_data.append(["Crosstab"])
+                    csv_data.append([f"{dependent_name}"])
+                    csv_data.append(dependent_labels)
+                    dep_values = dependent_var_counts[dependent_var]
+                    # Iterate over crosstab rows and dependent_var_counts simultaneously
+                    for (index, row), dep in zip(crosstab.iterrows(), dep_values):
+                        csv_data.append([f'"{index}"'] + ['Frequency'] + [dep] + ['-'] + row.values.tolist())
+
+                elif csv_output in ['row_percentage', 'column_percentage', 'total_percentage']:
+                    percentage_type = csv_output.split('_')[0].capitalize()
+                    percentage_data = results[independent_var][dependent_var][csv_output]
+                    dependent_labels = [f"{dependent_name}"] + [''] + [f'"{label}"' for label in percentage_data.columns.tolist()]
+                    
+                    csv_data.append([''] + [''] + [''] + [f"{independent_name}"])
+                    csv_data.append([f"{percentage_type} Percentage"])
+                    csv_data.append(dependent_labels)
+                    for index, row in percentage_data.iterrows():
+                        csv_data.append([f'"{index}"'] + ['-'] + [f"{value*100:.2f}%" for value in row.values.tolist()])
+                    csv_data.append([''])
+                        
+                elif csv_output == 'chi_square_results':
+                    p_value = results[independent_var][dependent_var]['p_value']
+                    chi_square_statistic = results[independent_var][dependent_var]['chi_square_statistic']
+                    degrees_of_freedom = results[independent_var][dependent_var]['degrees_of_freedom']
+                    significance = "<" if p_value < 0.05 else ">"
+                    significance_text = "significant" if p_value < 0.05 else "non-significant"
+                    total_values = (independent_var_counts[independent_var]).sum()
+                    csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
+                
+                elif csv_output == 'alternate_crosstab':
+                    csv_data.append(["Crosstabs and Total Percentage Data"])
+                    csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f"{independent_name}"])
+                    crosstab = results[independent_var][dependent_var]['crosstab']
+                    total_percentage = results[independent_var][dependent_var]['total_percentage']
+                    crosstab_iterator = crosstab.iterrows()
+                    total_percentage_iterator = total_percentage.iterrows()
+                    dep_values = dependent_var_counts[dependent_var]
+                    dep_percent = dependent_var_percentage[dependent_var]
+                    p_value = results[independent_var][dependent_var]['p_value']
+                    chi_square_statistic = results[independent_var][dependent_var]['chi_square_statistic']
+                    degrees_of_freedom = results[independent_var][dependent_var]['degrees_of_freedom']
+                    significance = "<" if p_value < 0.05 else ">"
+                    significance_text = "significant" if p_value < 0.05 else "non-significant"
+                    total_values = (independent_var_counts[independent_var]).sum()
+                    dependent_labels = [''] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    csv_data.append(dependent_labels)
+
+                    for (index, (crosstab_index, crosstab_row)), dep, (total_percentage_index, total_percentage_row), percent in zip(enumerate(crosstab_iterator), dep_values, total_percentage_iterator, dep_percent):
+                        # Append crosstab data
+                        csv_data.append([f'"{crosstab_index}"'] + ['Frequency'] + [dep] + ['-'] + crosstab_row.values.tolist())
+                        
+                        # Append total percentage data
+                        csv_data.append([''] + ['Column%'] + [f'{percent:.2f}%'] + ['-'] + [f'"{(value*100):.2f}%"' for value in total_percentage_row.tolist()])
+                    
+                    csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
+                
+            # Add empty line for separation between dependent variables
+            csv_data.append([""])
+
+        # Add empty line for separation between independent variables
+        csv_data.append([""])
+
+    # Generate CSV string
+    csv_string = "\ufeff" + "\n".join([",".join(map(str, row)) for row in csv_data])
+
+    # Set filename based on selected csv_outputs
+    filename = f"{'_'.join(selected_outputs)}_{'_'.join(independent_variables)}_{'_'.join(dependent_variables)}.csv"
+
+    return Response(csv_string, mimetype='text/csv;charset=utf-8;', headers={'Content-disposition': f'attachment; filename={filename}'})
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
