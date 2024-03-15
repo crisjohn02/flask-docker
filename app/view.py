@@ -445,7 +445,7 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
     results, independent_var_counts, dependent_var_counts, dependent_var_percentage = process_crosstabs_csv(rows, independent_variables, dependent_variables)
 
     # Check if csv_output parameter is valid
-    valid_outputs = ['crosstab', 'row_percentage', 'column_percentage', 'total_percentage', 'alternate_crosstab', 'chi_square_results']
+    valid_outputs = ['crosstab', 'row_percentage', 'column_percentage', 'total_percentage', 'total_crosstab', 'chi_square_results', 'row_crosstab', 'column_crosstab']
     selected_outputs = csv_outputs.split(',')
     for output in selected_outputs:
         if output not in valid_outputs:
@@ -464,27 +464,28 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
                 if csv_output == 'crosstab':
                     # Add crosstab data
                     crosstab = results[independent_var][dependent_var]['crosstab']
-                    dependent_labels = [''] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    dependent_labels = [f"{dependent_name}"] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
 
-                    csv_data.append([''] + [''] + [f"All"] + [''] + [f"{independent_name}"])
+                    csv_data.append([''] + [''] + [f"All"] + [''] + [''] + [f"{independent_name}"])
                     csv_data.append(["Crosstab"])
-                    csv_data.append([f"{dependent_name}"])
                     csv_data.append(dependent_labels)
                     dep_values = dependent_var_counts[dependent_var]
                     # Iterate over crosstab rows and dependent_var_counts simultaneously
                     for (index, row), dep in zip(crosstab.iterrows(), dep_values):
                         csv_data.append([f'"{index}"'] + ['Frequency'] + [dep] + ['-'] + row.values.tolist())
+                    csv_data.append([''])
 
                 elif csv_output in ['row_percentage', 'column_percentage', 'total_percentage']:
                     percentage_type = csv_output.split('_')[0].capitalize()
                     percentage_data = results[independent_var][dependent_var][csv_output]
-                    dependent_labels = [f"{dependent_name}"] + [''] + [f'"{label}"' for label in percentage_data.columns.tolist()]
+                    dependent_labels = [f"{dependent_name}"] + [''] + [''] + [''] + [f'"{label}"' for label in percentage_data.columns.tolist()]
                     
-                    csv_data.append([''] + [''] + [''] + [f"{independent_name}"])
+                    csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f"{independent_name}"])
                     csv_data.append([f"{percentage_type} Percentage"])
                     csv_data.append(dependent_labels)
-                    for index, row in percentage_data.iterrows():
-                        csv_data.append([f'"{index}"'] + ['-'] + [f"{value*100:.2f}%" for value in row.values.tolist()])
+                    dep_percent = dependent_var_percentage[dependent_var]
+                    for (index, row), percent in zip((percentage_data.iterrows()), dep_percent):
+                        csv_data.append([f'"{index}"'] + ['Frequency'] + [f'{percent:.2f}%'] + ['-'] + [f"{value*100:.2f}%" for value in row.values.tolist()])
                     csv_data.append([''])
                         
                 elif csv_output == 'chi_square_results':
@@ -496,7 +497,7 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
                     total_values = (independent_var_counts[independent_var]).sum()
                     csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
                 
-                elif csv_output == 'alternate_crosstab':
+                elif csv_output == 'total_crosstab':
                     csv_data.append(["Crosstabs and Total Percentage Data"])
                     csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f"{independent_name}"])
                     crosstab = results[independent_var][dependent_var]['crosstab']
@@ -511,7 +512,7 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
                     significance = "<" if p_value < 0.05 else ">"
                     significance_text = "significant" if p_value < 0.05 else "non-significant"
                     total_values = (independent_var_counts[independent_var]).sum()
-                    dependent_labels = [''] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    dependent_labels = [f"{dependent_name}"] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
                     csv_data.append(dependent_labels)
 
                     for (index, (crosstab_index, crosstab_row)), dep, (total_percentage_index, total_percentage_row), percent in zip(enumerate(crosstab_iterator), dep_values, total_percentage_iterator, dep_percent):
@@ -522,7 +523,63 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
                         csv_data.append([''] + ['Column%'] + [f'{percent:.2f}%'] + ['-'] + [f'"{(value*100):.2f}%"' for value in total_percentage_row.tolist()])
                     
                     csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
-                
+                    csv_data.append([''])
+                    
+                elif csv_output == 'row_crosstab':
+                    csv_data.append(["Crosstabs and Row Percentage Data"])
+                    csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f"{independent_name}"])
+                    crosstab = results[independent_var][dependent_var]['crosstab']
+                    row_percentage = results[independent_var][dependent_var]['row_percentage']
+                    crosstab_iterator = crosstab.iterrows()
+                    row_percentage_iterator = row_percentage.iterrows()
+                    dep_values = dependent_var_counts[dependent_var]
+                    dep_percent = dependent_var_percentage[dependent_var]
+                    p_value = results[independent_var][dependent_var]['p_value']
+                    chi_square_statistic = results[independent_var][dependent_var]['chi_square_statistic']
+                    degrees_of_freedom = results[independent_var][dependent_var]['degrees_of_freedom']
+                    significance = "<" if p_value < 0.05 else ">"
+                    significance_text = "significant" if p_value < 0.05 else "non-significant"
+                    total_values = (independent_var_counts[independent_var]).sum()
+                    dependent_labels = [f"{dependent_name}"] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    csv_data.append(dependent_labels)
+
+                    for (index, (crosstab_index, crosstab_row)), dep, (row_percentage_index, row_percentage_row), percent in zip(enumerate(crosstab_iterator), dep_values, row_percentage_iterator, dep_percent):
+                        # Append crosstab data
+                        csv_data.append([f'"{crosstab_index}"'] + ['Frequency'] + [dep] + ['-'] + crosstab_row.values.tolist())
+                        
+                        # Append row percentage data
+                        csv_data.append([''] + ['Column%'] + [f'{percent:.2f}%'] + ['-'] + [f'"{(value*100):.2f}%"' for value in row_percentage_row.tolist()])
+                    
+                    csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
+                    csv_data.append([''])
+                    
+                elif csv_output == 'column_crosstab':
+                    csv_data.append(["Crosstabs and Column Percentage Data"])
+                    csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f"{independent_name}"])
+                    crosstab = results[independent_var][dependent_var]['crosstab']
+                    column_percentage = results[independent_var][dependent_var]['column_percentage']
+                    crosstab_iterator = crosstab.iterrows()
+                    column_percentage_iterator = column_percentage.iterrows()
+                    dep_values = dependent_var_counts[dependent_var]
+                    dep_percent = dependent_var_percentage[dependent_var]
+                    p_value = results[independent_var][dependent_var]['p_value']
+                    chi_square_statistic = results[independent_var][dependent_var]['chi_square_statistic']
+                    degrees_of_freedom = results[independent_var][dependent_var]['degrees_of_freedom']
+                    significance = "<" if p_value < 0.05 else ">"
+                    significance_text = "significant" if p_value < 0.05 else "non-significant"
+                    total_values = (independent_var_counts[independent_var]).sum()
+                    dependent_labels = [f"{dependent_name}"] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    csv_data.append(dependent_labels)
+
+                    for (index, (crosstab_index, crosstab_row)), dep, (column_percentage_index, column_percentage_row), percent in zip(enumerate(crosstab_iterator), dep_values, column_percentage_iterator, dep_percent):
+                        # Append crosstab data
+                        csv_data.append([f'"{crosstab_index}"'] + ['Frequency'] + [dep] + ['-'] + crosstab_row.values.tolist())
+                        
+                        # Append column percentage data
+                        csv_data.append([''] + ['Column%'] + [f'{percent:.2f}%'] + ['-'] + [f'"{(value*100):.2f}%"' for value in column_percentage_row.tolist()])
+                    
+                    csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
+                    csv_data.append([''])
             # Add empty line for separation between dependent variables
             csv_data.append([""])
 
