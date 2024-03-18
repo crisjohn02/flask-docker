@@ -286,9 +286,7 @@ def visualize_table(selected_data):
 
     return jsonify(column_data)
 
-    
-    
-    
+
 #CROSSTAB AND CHI-SQUARE API
 # Crosstab API for Vue.js
 def process_crosstabs(rows, independent_variables, dependent_variables):
