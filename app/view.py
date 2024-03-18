@@ -15,14 +15,15 @@ import scipy.stats
 from scipy.stats import f_oneway
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
+from flask_cors import CORS
 
 app = Flask(__name__)
-app.secret_key = 'doms'
+CORS(app)
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'host.docker.internal'
-app.config['MYSQL_USER'] = 'dan'
-app.config['MYSQL_PASSWORD'] = 'dan'
+app.config['MYSQL_USER'] = 'local'
+app.config['MYSQL_PASSWORD'] = 'secret'
 app.config['MYSQL_DB'] = 'fluent'
 
 # Initialize MySQL
@@ -272,6 +273,14 @@ def home():
     # Pass the column names to the template
     return render_template('dashboard.html')
 
+@app.route('/stellar')
+def stellar():
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
+
+    # Pass the column names to the template
+    return render_template('stellar.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
+
 @app.route('/visualize')
 def visualize():
     # Load data and configuration
@@ -348,7 +357,8 @@ def visualize_data():
         column_data = None
 
     # Pass the visualization URI, column name, data type, table data, and other data to the template
-    return render_template('visualize.html', visualization=visualization_uri, columns=columns, column_info=column_info, column_data=column_data, column_name=column_name, column_data_type=column_data_type, selected_column=selected_column, crosstab_config=crosstab_config)
+    return render_template('visualize.html', visualization=visualization_uri, columns=columns, column_info=column_info, column_data=column_data, column_name=column_name, 
+    column_data_type=column_data_type, selected_column=selected_column, crosstab_config=crosstab_config)
 
 @app.route('/chisquare')
 def chisquare():
@@ -356,7 +366,8 @@ def chisquare():
     df, columns, column_info, crosstab_config = load_data_and_config()
 
     # Pass the column names to the template
-    return render_template('chisquare.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
+    return render_template('chisquare.html', columns=columns, 
+    column_info=column_info, crosstab_config=crosstab_config)
 
 @app.route('/compute_chisquare', methods=['POST'])
 def compute_chisquare():
@@ -385,7 +396,9 @@ def compute_chisquare():
     maximum_frequency = df[column_for_columns].max()
 
     # Pass the result and selected columns to the template
-    return render_template('chisquare.html', crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, column_info=column_info, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    return render_template('chisquare.html', crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, 
+    column_info=column_info, total_column_value=total_column_value, result=result, columns=columns, column_for_columns=column_for_columns, 
+    column_for_rows_list=column_for_rows, computation_method=computation_method)
 
 @app.route('/ttest')
 def ttest():
@@ -419,7 +432,11 @@ def compute_ttest():
     maximum_frequency = df[column_for_columns].max()
 
     # Pass the result and selected columns to the template
-    return render_template('Ttest.html',  mean_group1=result[column_for_rows[0]]['mean_group1'], mean_group2=result[column_for_rows[0]]['mean_group2'], crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, column_info=column_info, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    return render_template('Ttest.html',  mean_group1=result[column_for_rows[0]]['mean_group1'], mean_group2=result[column_for_rows[0]]['mean_group2'], 
+    crosstab_config=crosstab_config, maximum_frequency=maximum_frequency, column_info=column_info, result=result, columns=columns, 
+    column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+
+from flask import request, jsonify
 
 
 @app.route('/correlation')
@@ -468,7 +485,8 @@ def compute_correlation():
             result[selected_row] = {'correlation_coefficient': correlation_coefficient, 'scatterplot_path': scatterplot_path}
 
     # Pass the result and selected columns to the template
-    return render_template('correlation.html', crosstab_config=crosstab_config, column_info=column_info, result=result, columns=columns, column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
+    return render_template('correlation.html', crosstab_config=crosstab_config, column_info=column_info, result=result, columns=columns, 
+    column_for_columns=column_for_columns, column_for_rows_list=column_for_rows, computation_method=computation_method)
 
 @app.route('/anova')
 def anova():
@@ -490,6 +508,209 @@ def compute_anova():
     anova_result, summary = perform_anova(selected_columns, df)
 
     return render_template('anova.html', anova_result=anova_result, summary=summary, columns=columns, column_info=column_info)
+
+from scipy import stats
+from decimal import Decimal
+
+
+def perform_ttest(group1, group2):
+    """
+    Perform a t-test on two groups of data.
+
+    Args:
+        group1 (list): The first group of data.
+        group2 (list): The second group of data.
+
+    Returns:
+        tuple: A tuple containing the t-statistic and p-value of the t-test.
+    """
+    try:
+        group1 = list(map(int, group1))  # Convert group1 to integers
+        group2 = list(map(int, group2))  # Convert group2 to integers
+
+        # Check if the variances of group1 and group2 are equal
+        if np.var(group1) == np.var(group2):
+            # Perform equal variance (pooled) t-test
+            t_statistic, p_value = scipy.stats.ttest_ind(group1, group2, equal_var=True)
+        else:
+            # Check if the total data in group1 and group2 are equal
+            if len(group1) == len(group2):
+                # Perform paired t-test
+                t_statistic, p_value = scipy.stats.ttest_rel(group1, group2)
+            else:
+                # Perform independent t-test (unequal variance t-test)
+                t_statistic, p_value = scipy.stats.ttest_ind(group1, group2, equal_var=False)
+        
+        return Decimal(str(t_statistic)), Decimal(str(p_value))
+    except Exception as e:
+        raise ValueError("Error during t-test calculation: " + str(e))
+
+
+@app.route('/compute_ttest_new', methods=['POST'])
+def compute_ttest_new():
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            if 'selectedRowData' not in data or not data['selectedRowData']:
+                raise ValueError("No data provided for t-test")
+
+            selectedRowData = data['selectedRowData']
+            
+            # Extracting data for groups 1 and 2
+            group1 = [row[0] for row in selectedRowData]
+            group2 = [row[1] for row in selectedRowData]
+
+            # Performing t-test computation
+            t_statistic, p_value = perform_ttest(group1, group2)
+
+            return jsonify({
+                "t_statistic": str(t_statistic),
+                "p_value": str(p_value)
+            }), 200
+
+        except ValueError as ve:
+            return jsonify({'error': str(ve)}), 400
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+            #incorrect calculations for t-test(tested via colab with similar code)
+
+# @app.route('/compute_ttest_new', methods=['POST'])
+# def compute_ttest_new():
+#     if request.method == 'POST':
+#         data = request.get_json()
+#         selectedRowData = data['selectedRowData']
+        
+#         # Extracting column data and row data from the selected row data
+#         group1 = []
+#         group2 = []
+        
+#         # Reorganize data to handle zeros
+#         data_dict = defaultdict(lambda: {'group1': [], 'group2': []})
+#         for row in selectedRowData:
+#             data_dict[row[0]]['group1'].append(row[2])
+#             data_dict[row[1]]['group2'].append(row[2])
+
+#         for key, value in data_dict.items():
+#             group1.extend(value['group1'])
+#             group2.extend(value['group2'])
+
+#         # Performing t-test computation
+#         try:
+#             # Check if the variances of group1 and group2 are equal
+#             if np.var(group1) == np.var(group2):
+#                 # Perform equal variance (pooled) t-test
+#                 t_statistic, p_value = scipy.stats.ttest_ind(group1, group2, equal_var=True)
+#             else:
+#                 # Check if the total data in group1 and group2 are equal
+#                 if len(group1) == len(group2):
+#                     # Perform paired t-test
+#                     t_statistic, p_value = scipy.stats.ttest_rel(group1, group2)
+#                 else:
+#                     # Perform independent t-test (unequal variance t-test)
+#                     t_statistic, p_value = scipy.stats.ttest_ind(group1, group2, equal_var=False)
+#                 return jsonify({
+#                     "t_statistic": t_statistic,
+#                     "p_value": p_value
+#                 }), 200
+#         except Exception as e:
+#             return jsonify({'error': str(e)}), 500
+
+
+
+# @app.route('/compute_ttest_new', methods=['POST'])
+# def compute_ttest_new():
+#     if request.method == 'POST':
+#         data = request.get_json()
+#         selectedRowData = data['selectedRowData']
+
+#         # Convert selectedRowData to DataFrame
+#         df = pd.DataFrame(selectedRowData, columns=['group1', 'group2'])
+
+#         # Extracting column data from the DataFrame
+#         group1 = df['group1']
+#         group2 = df['group2']
+
+#         # Performing t-test computation
+#         try:
+#             # Check if the variances of group1 and group2 are equal
+#             if np.var(group1) == np.var(group2):
+#                 # Perform equal variance (pooled) t-test
+#                 t_statistic, p_value = scipy.stats.ttest_ind(group1, group2, equal_var=True)
+#             else:
+#                 # Check if the total data in group1 and group2 are equal
+#                 if len(group1) == len(group2):
+#                     # Perform paired t-test
+#                     t_statistic, p_value = scipy.stats.ttest_rel(group1, group2)
+#                 else:
+#                     # Perform independent t-test (unequal variance t-test)
+#                     t_statistic, p_value = scipy.stats.ttest_ind(group1, group2, equal_var=False)
+#             return jsonify({
+#                 "t_statistic": t_statistic,
+#                 "p_value": p_value
+#             }), 200
+#         except Exception as e:
+#             return jsonify({'error': str(e)}), 500
+
+
+@app.route('/data_analysis')
+def data_analysis():
+    # Load data and configuration
+    df, columns, column_info, crosstab_config = load_data_and_config()
+
+    # Pass necessary data to the template
+    return render_template('data_analysis.html', columns=columns, column_info=column_info, crosstab_config=crosstab_config)
+
+@app.route('/generate_table', methods=['POST'])
+def generate_table():
+    # Extract selected independent and dependent variables from the form submission
+    independent_variable = request.form['independent_variable']
+    dependent_variable = request.form['dependent_variable']
+    table = request.form['table']
+
+    # Load data and configuration
+    df, columns, column_info, _ = load_data_and_config()
+
+    total_column_value = df[independent_variable].count()
+
+    # Perform computation based on the selected method
+    result = {}
+    if table == 'contingency':
+        # Calculate the frequency counts of unique values in dependent variable
+        selected_row_counts = df[dependent_variable].value_counts()
+        total_selected_row_count = selected_row_counts.sum()
+
+        selected_column_counts = df[independent_variable].value_counts()
+        total_selected_column_count = selected_column_counts.sum()
+
+        # Calculate the percentage of each value in dependent variable
+        selected_row_percentage = (selected_row_counts / total_selected_row_count * 100).astype(float)
+
+        # Calculate the contingency table
+        contingency_table = pd.crosstab(df[dependent_variable], df[independent_variable])
+        
+        # Separate frequency and percentage in breakdown table
+        breakdown_table = contingency_table.copy()
+        breakdown_table_percentage = (contingency_table.div(contingency_table.sum(axis=1), axis=0) * 100).astype(float)
+        breakdown_percentage = (contingency_table.div(total_column_value, axis=1) * 100).astype(float)
+
+        result[dependent_variable] = {'breakdown_table_frequency': breakdown_table,
+                'breakdown_table_percentage': breakdown_table_percentage,
+                'selected_row_counts': selected_row_counts,
+                'total_selected_row_count': total_selected_row_count,
+                'selected_row_percentage': selected_row_percentage,
+                'selected_column_counts': selected_column_counts,
+                'total_selected_column_count': total_selected_column_count}
+
+    # Load the crosstab configuration file
+    with open('static/survey_config.json', 'r') as config_file:
+        crosstab_config = json.load(config_file)
+
+    # Calculate maximum frequency
+    maximum_frequency = df[independent_variable].max()
+
+    return render_template('data_analysis.html', result=result, columns=columns, maximum_frequency=maximum_frequency, column_info=column_info, total_column_value=total_column_value, independent_variable=independent_variable, dependent_variable=dependent_variable, crosstab_config=crosstab_config, table=table)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

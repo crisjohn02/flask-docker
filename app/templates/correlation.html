@@ -12,7 +12,7 @@ Correlation
         var newRowOption = document.createElement('div');
         newRowOption.className = 'row-option';
         newRowOption.innerHTML = '<label>Select Column for Rows:</label><select name="column_for_rows" class="column-for-rows">' + 
-                                 '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
+                                '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
         columnForRowsDiv.appendChild(newRowOption);
     }
 
@@ -22,8 +22,8 @@ Correlation
 <div class="container">
     <h1>Correlation</h1>
 
-     <!-- Error message for column equality -->
-     <div id="error-message" class="error-message"></div>
+    <!-- Error message for column equality -->
+    <div id="error-message" class="error-message"></div>
 
     <!-- Form for selecting columns and computation method -->
     <form action="/compute_correlation" method="post" onsubmit="return checkColumns()">

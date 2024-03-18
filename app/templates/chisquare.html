@@ -12,7 +12,7 @@ Chi-Square
         var newRowOption = document.createElement('div');
         newRowOption.className = 'row-option';
         newRowOption.innerHTML = '<label>Select Column for Rows:</label><select name="column_for_rows" class="column-for-rows">' + 
-                                 '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
+                                '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
         columnForRowsDiv.appendChild(newRowOption);
     }
 
@@ -101,8 +101,8 @@ Chi-Square
 <div class="container">
     <h1>Chi-Square Test</h1>
 
-     <!-- Error message for column equality -->
-     <div id="error-message" class="error-message"></div>
+    <!-- Error message for column equality -->
+    <div id="error-message" class="error-message"></div>
 
     <!-- Form for selecting columns and computation method -->
     <form action="/compute_chisquare" method="post" onsubmit="return checkColumns()">
@@ -151,8 +151,8 @@ Chi-Square
 
     <!-- Display the computation result -->
 
- <h2>Chi-square Test Results</h2>
- <div id="crosstab-results" style="overflow: scroll;">
+<h2>Chi-square Test Results</h2>
+<div id="crosstab-results" style="overflow: scroll;">
     {% for selected_row in column_for_rows_list %}
         {% if result[selected_row] %}
             {% set column_info_for_columns = column_info[column_for_columns] %}
@@ -273,7 +273,7 @@ Chi-Square
 
 
 
- <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
+<button class="custom-button" onclick="exportCsv()">Export to CSV</button>
 </div>
     <script src="@@path/vendor/simple-datatables/dist/umd/simple-datatables.js"></script>
 {% endblock %}

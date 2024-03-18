@@ -96,7 +96,8 @@ ANOVA
         </div>
         <div>
             {% set significance = "significant" if anova_result.pvalue < 0.05 else "not significant" %}
-            <p>The ANOVA result shows an F-value of {{ anova_result.statistic|round(2) }} and a corresponding p-value of {{ anova_result.pvalue|round(2) }}, indicating that the differences between group means are {{ significance }}.</p>
+            <p>The ANOVA result shows an F-value of {{ anova_result.statistic|round(2) }} and a corresponding p-value of {{ anova_result.pvalue|round(2) }}, 
+                indicating that the differences between group means are {{ significance }}.</p>
         </div>
         {% endif %}
     {% endif %}

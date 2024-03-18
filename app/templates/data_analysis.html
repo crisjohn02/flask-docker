@@ -1,0 +1,371 @@
+{% extends 'layout.html' %}
+{% block title %}
+Data Analysis Tool
+{% endblock %}
+{% block content %}
+
+<h1>Data Analysis Tool</h1>
+
+<div class="container">
+    <form action="/generate_table" method="post" id="crosstab_form">
+        <label for="independent_variable">Select Independent Variable:</label>
+        <select name="independent_variable" id="independent_variable">
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    {% if info.data_type %}
+                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                    {% else %}
+                        <option value="{{ col }}">{{ info.name }}</option>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <label for="dependent_variable">Select Dependent Variable:</label>
+        <select name="dependent_variable" id="dependent_variable">
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    {% if info.data_type %}
+                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                    {% else %}
+                        <option value="{{ col }}">{{ info.name }}</option>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </select>
+
+
+        <button type="submit">Generate Contingency Table</button>
+        <!-- Hidden input for computation method (fixed to Chi Square) -->
+        <input type="hidden" name="table" value="contingency">
+    </form>
+
+    {% set column_info_for_independent_variable = column_info[independent_variable] %}
+    {% set column_name = column_info_for_independent_variable.name if column_info_for_independent_variable is defined else independent_variable %}        
+    {% set column_info_for_dependent_variable = column_info[dependent_variable] %}
+    {% set row_name = column_info_for_dependent_variable.name if column_info_for_dependent_variable is defined else dependent_variable %}   
+    {% set column_info = crosstab_config['columns'] | selectattr('variable', 'equalto', independent_variable) | first %}
+    {% set row_info = crosstab_config['rows'] | selectattr('variable', 'equalto', dependent_variable) | first %}
+    {% if column_info is defined %}
+        {% set column_name = column_info['name'] %}
+    {% endif %}
+    {% if row_info is defined %}
+        {% set row_name = row_info['name'] %}
+    {% endif %}
+    
+    {% if result %}
+    <div id="crosstab-results" style="overflow: scroll;">
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th>All</th>
+                    <th></th>
+                    <th>{{ column_name }}</th>
+                    {% for _ in range(result[dependent_variable]['breakdown_table_frequency'].shape[1]) %}
+                        <th></th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th></th>
+                    <th>{{ row_name }}</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    {% for col_header in result[dependent_variable]['breakdown_table_frequency'].columns %}
+                        {% set label = get_label_for_value(independent_variable, col_header, 'static/survey_config.json') %}
+                        <th>{{ label if label is not none else col_header }}</th>
+                    {% endfor %}
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set frequency_rows = result[dependent_variable]['breakdown_table_frequency'].iterrows() %}
+                {% set selected_row_counts = result[dependent_variable]['selected_row_counts'] %}
+                {% set percentage_rows = result[dependent_variable]['breakdown_table_percentage'].iterrows() %}
+                {% set selected_row_percentage = result[dependent_variable]['selected_row_percentage'] %}
+                {% set max_value = result[dependent_variable]['breakdown_table_frequency'].sum(axis=1).max() %}
+                {% for i in range(result[dependent_variable]['breakdown_table_frequency'].shape[0]) %}
+                    {% set frequency_row = frequency_rows.__next__() %}
+                    {% set percentage_row = percentage_rows.__next__() %}
+                    <tr class="odd">
+                        <td>
+                            <input type="checkbox" class="frequency-checkbox" value="{{ frequency_row[1]|join(',') }}">
+                        </td>
+                        <td>
+                            {% set label = get_label_for_value(dependent_variable, frequency_row[0], 'static/survey_config.json') %}
+                            {{ label if label is not none else frequency_row[0] }}
+                        </td>
+                        <td>Frequency</td>
+                        <td>
+                            {{ selected_row_counts[frequency_row[0]] }}
+                        </td>
+                        <td>-</td>
+                        {% for value in frequency_row[1] %}
+                            <td style="background-color: rgba({{ 255 - (255 - 80) * (value / max_value) }}, 
+                            {{ 111 + (200 - 111) * (value / max_value) }}, {{ 105 + (120 - 105) * (value / max_value) }}, 0.7);">
+                                {{ value }}
+                            </td>                        
+                        {% endfor %}
+                        <td style="background-color: rgba({{ 255 - (255 - 80) * (frequency_row[1].sum() / max_value) }}, {{ 111 + (200 - 111) * (frequency_row[1].sum() / max_value) }}, {{ 105 + (120 - 105) * (frequency_row[1].sum() / max_value) }}, 0.7);">
+                            {{ frequency_row[1].sum() }}
+                        </td>                        
+                    </tr>
+                    <tr class="even percentage-row" style="display: none;">
+                        <td class="percentage-cell"></td>
+                        <td class="percentage-cell"></td>
+                        <td class="percentage-cell">Column%</td>
+                        <td class="percentage-cell">
+                            {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                        </td>
+                        <td class="percentage-cell">
+                            {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                        </td>
+                        {% for total_value in result[dependent_variable]['breakdown_table_frequency'].sum() %}
+                            {% set percentage = (total_value / result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 %}
+                            <td class="percentage-cell">{{ '%.2f'|format(percentage) }}%</td>
+                        {% endfor %}
+                        <td class="percentage-cell">
+                            {{ (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) / (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 }}%
+                        </td>
+                    </tr>
+                {% endfor %}
+                <tr>
+                    <td></td>
+                    <td>Total</td>
+                    <td>Frequency</td>
+                    <td>{{ result[dependent_variable]['total_selected_row_count'] }}</td>
+                    <td>{{ result[dependent_variable]['total_selected_row_count'] }}</td>
+                    {% for total_value in result[dependent_variable]['breakdown_table_frequency'].sum() %}
+                        <td style="background-color: rgba({{{ 255 - (255 - 80) * (total_value / max_value) }}, {{ 111 + (200 - 111) * (total_value / max_value) }}, {{ 105 + (120 - 105) * (total_value / max_value) }}, 0.7);">{{ total_value }}</td>
+                    {% endfor %}
+                    <td style="background-color: rgba({{ 255 - (255 - 80) * (result[dependent_variable]['breakdown_table_frequency'].sum().sum() / max_value) }}, {{ 111 + (200 - 111) * (result[dependent_variable]['breakdown_table_frequency'].sum().sum() / max_value) }}, {{ 105 + (120 - 105) * (result[dependent_variable]['breakdown_table_frequency'].sum().sum() / max_value) }}, 0.7);">{{ result[dependent_variable]['breakdown_table_frequency'].sum().sum() }}</td>
+                </tr>                                
+                <tr class="even percentage-row" style="display: none;">
+                    <td class="percentage-cell"></td>
+                    <td class="percentage-cell"></td>
+                    <td class="percentage-cell">Column%</td>
+                    <td class="percentage-cell">
+                        {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                    </td>
+                    <td class="percentage-cell">
+                        {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                    </td>
+                    {% for total_value in result[dependent_variable]['breakdown_table_frequency'].sum() %}
+                        {% set percentage = (total_value / result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 %}
+                        <td class="percentage-cell">{{ '%.2f'|format(percentage) }}%</td>
+                    {% endfor %}
+                    <td class="percentage-cell" >
+                        {{ (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) / (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 }}%
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+    </div>
+    {% endif %}
+    <div>
+        <button id="showPercentagesBtn">Show Percentages</button>
+        <button id="hidePercentagesBtn" style="display: none;">Hide Percentages</button>
+    </div>
+
+    <br>
+    <div>
+        <button id="getSelectedDataBtn">Get Selected Data</button>
+        <div id="selectedDataContainer" style="display: none;">
+            <table id="selectedDataTable">
+                <thead>
+                    <tr id="selectedDataHeaders">
+                        <!-- Dynamic headers will be inserted here -->
+                    </tr>
+                </thead>
+                <tbody id="selectedDataBody">
+                    <!-- Dynamic rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <button id="computeTTestBtn" type="button">Compute T-Test</button>
+    <div id="tTestResult" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>T-Statistic</th>
+                    <th>P-Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="tStatValue"></td>
+                    <td id="pValue"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    
+    <script>
+// Initialize idCounter
+        var idCounter = 0;
+
+        // Define selectedDataBody outside of the event listener
+        var selectedDataBody = document.getElementById('selectedDataBody');
+
+        document.getElementById('showPercentagesBtn').addEventListener('click', function() {
+            var percentageRows = document.querySelectorAll('.percentage-row');
+            percentageRows.forEach(function(row) {
+                row.style.display = 'table-row';
+            });
+            var percentageCells = document.querySelectorAll('.percentage-cell');
+            percentageCells.forEach(function(cell) {
+                cell.style.display = 'table-cell';
+            });
+            document.getElementById('showPercentagesBtn').style.display = 'none';
+            document.getElementById('hidePercentagesBtn').style.display = 'inline-block';
+        });
+
+        document.getElementById('hidePercentagesBtn').addEventListener('click', function() {
+            var percentageRows = document.querySelectorAll('.percentage-row');
+            percentageRows.forEach(function(row) {
+                row.style.display = 'none';
+            });
+            var percentageCells = document.querySelectorAll('.percentage-cell');
+            percentageCells.forEach(function(cell) {
+                cell.style.display = 'none';
+            });
+            document.getElementById('showPercentagesBtn').style.display = 'inline-block';
+            document.getElementById('hidePercentagesBtn').style.display = 'none';
+        });
+
+        // Handling checkbox click event
+        var checkboxes = document.querySelectorAll('.frequency-checkbox');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                var rowData = this.value.split(',');
+                if (this.checked) {
+                    // You can send this data to your backend for computation
+                    console.log(rowData);
+                    var newRow = selectedDataBody.insertRow();
+                    for (var i = 0; i < rowData.length; i++) {
+                        var cell = newRow.insertCell();
+                        cell.textContent = rowData[i];
+                    }
+
+                } else {
+                    // Remove row if unchecked
+                    var rows = selectedDataBody.rows;
+                    for (var i = 0; i < rows.length; i++) {
+                        var cells = rows[i].cells;
+                        if (cells.length === rowData.length) {
+                            var valuesMatch = true;
+                            for (var j = 0; j < cells.length; j++) {
+                                if (cells[j].textContent !== rowData[j]) {
+                                    valuesMatch = false
+                                    break;
+                                }
+                            }
+                            if (valuesMatch) {
+                                selectedDataBody.deleteRow(i);
+                                break;
+                            }
+                        }
+                    }
+                    // Clear inputs if no rows are selected
+                    var inputsContainer = document.getElementById('inputsContainer');
+                    inputsContainer.innerHTML = '';
+                }
+            });
+        });
+
+        document.getElementById('getSelectedDataBtn').addEventListener('click', function() {
+            var selectedDataContainer = document.getElementById('selectedDataContainer');
+            if (selectedDataContainer.style.display === 'none') {
+                selectedDataContainer.style.display = 'block';
+            } else {
+                selectedDataContainer.style.display = 'none';
+            }
+        });
+    
+        document.getElementById('getSelectedDataBtn').addEventListener('click', function() {
+            var selectedDataBody = document.getElementById('selectedDataBody');
+            var rows = selectedDataBody.rows;
+            var selectedRowData = [];
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].cells;
+                var rowData = [];
+                for (var j = 0; j < cells.length; j++) {
+                    rowData.push(cells[j].textContent);
+                }
+                selectedRowData.push(rowData);
+            }
+
+        });
+    
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('computeTTestBtn').addEventListener('click', function() {
+                var selectedDataBody = document.getElementById('selectedDataBody');
+                //var checkedRows = selectedDataBody.querySelectorAll('input[type="checkbox"]:checked');
+                var checkedRows = selectedDataBody.querySelectorAll('tr');
+                // Check if exactly two rows are selected
+                console.log(checkedRows)
+                if (checkedRows.length !== 2) {
+                    if (checkedRows.length < 2) {
+                        alert('Please select at least two rows for the t-test.');
+                    } else {
+                        alert('Please select only two rows for the t-test.');
+                    }
+                    return;
+                }
+
+                // Extract data for the columns you want to perform t-test on
+                var selectedRowData = [];
+                checkedRows.forEach(function(row,i) {
+                    let rowData = []
+                    row.querySelectorAll('td').forEach((td)=>{
+                        rowData.push(parseFloat(td.textContent))
+                    })
+
+                    selectedRowData.push(rowData);
+                });
+                console.log(selectedRowData)
+
+                // Assign the first selected row as column data and the second as row data
+                
+                var columnData = selectedRowData[0];
+                var rowData = selectedRowData[1];
+
+                fetch('/compute_ttest_new', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ selectedRowData: selectedRowData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Process the response from the server
+                    console.log(data); // Display response from the server
+
+                    // Extract the necessary data from the response and assign it to the necessary parameters
+                    var tStatistic = data.t_statistic;
+                    var pValue = data.p_value;
+
+                    // Display T-statistic and P-value in the result section
+                    document.getElementById('tStatValue').textContent = 'T-Statistic: ' + tStatistic;
+                    document.getElementById('pValue').textContent = 'P-Value: ' + pValue;
+                    document.getElementById('tTestResult').style.display = 'block'; // Show the result section
+
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+
+
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-statistics/7.0.0/simple-statistics.min.js"></script>
+    
+
+{% endblock %}

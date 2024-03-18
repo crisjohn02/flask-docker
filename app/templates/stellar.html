@@ -1,0 +1,349 @@
+{% extends 'layout.html' %}
+{% block title %}
+Stellar
+{% endblock %}
+{% block content %}
+
+
+<h1>Data Analysis Tool</h1>
+
+<div class="container">
+    <form action="/generate_table" method="post" id="crosstab_form">
+        <label for="independent_variable">Select Independent Variable:</label>
+        <select name="independent_variable" id="independent_variable">
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    {% if info.data_type %}
+                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                    {% else %}
+                        <option value="{{ col }}">{{ info.name }}</option>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <label for="dependent_variable">Select Dependent Variable:</label>
+        <select name="dependent_variable" id="dependent_variable">
+            {% for col, info in column_info.items() %}
+                {% if info %}
+                    {% if info.data_type %}
+                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                    {% else %}
+                        <option value="{{ col }}">{{ info.name }}</option>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </select>
+
+
+        <button type="submit">Generate Contingency Table</button>
+        <!-- Hidden input for computation method (fixed to Chi Square) -->
+        <input type="hidden" name="table" value="contingency">
+    </form>
+
+    {% set column_info_for_independent_variable = column_info[independent_variable] %}
+    {% set column_name = column_info_for_independent_variable.name if column_info_for_independent_variable is defined else independent_variable %}        
+    {% set column_info_for_dependent_variable = column_info[dependent_variable] %}
+    {% set row_name = column_info_for_dependent_variable.name if column_info_for_dependent_variable is defined else dependent_variable %}   
+    {% set column_info = crosstab_config['columns'] | selectattr('variable', 'equalto', independent_variable) | first %}
+    {% set row_info = crosstab_config['rows'] | selectattr('variable', 'equalto', dependent_variable) | first %}
+    {% if column_info is defined %}
+        {% set column_name = column_info['name'] %}
+    {% endif %}
+    {% if row_info is defined %}
+        {% set row_name = row_info['name'] %}
+    {% endif %}
+    
+    {% if result %}
+    <div id="crosstab-results" style="overflow: scroll;">
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th>All</th>
+                    <th></th>
+                    <th>{{ column_name }}</th>
+                    {% for _ in range(result[dependent_variable]['breakdown_table_frequency'].shape[1]) %}
+                        <th></th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th></th>
+                    <th>{{ row_name }}</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    {% for col_header in result[dependent_variable]['breakdown_table_frequency'].columns %}
+                        {% set label = get_label_for_value(independent_variable, col_header, 'static/survey_config.json') %}
+                        <th>{{ label if label is not none else col_header }}</th>
+                    {% endfor %}
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set frequency_rows = result[dependent_variable]['breakdown_table_frequency'].iterrows() %}
+                {% set selected_row_counts = result[dependent_variable]['selected_row_counts'] %}
+                {% set percentage_rows = result[dependent_variable]['breakdown_table_percentage'].iterrows() %}
+                {% set selected_row_percentage = result[dependent_variable]['selected_row_percentage'] %}
+                {% set max_value = result[dependent_variable]['breakdown_table_frequency'].sum(axis=1).max() %}
+                {% for i in range(result[dependent_variable]['breakdown_table_frequency'].shape[0]) %}
+                    {% set frequency_row = frequency_rows.__next__() %}
+                    {% set percentage_row = percentage_rows.__next__() %}
+                    <tr class="odd">
+                        <td>
+                            <input type="checkbox" class="frequency-checkbox" value="{{ frequency_row[1]|join(',') }}">
+                        </td>
+                        <td>
+                            {% set label = get_label_for_value(dependent_variable, frequency_row[0], 'static/survey_config.json') %}
+                            {{ label if label is not none else frequency_row[0] }}
+                        </td>
+                        <td>Frequency</td>
+                        <td>
+                            {{ selected_row_counts[frequency_row[0]] }}
+                        </td>
+                        <td>-</td>
+                        {% for value in frequency_row[1] %}
+                            <td style="background-color: rgba({{ 255 - (255 - 80) * (value / max_value) }}, {{ 111 + (200 - 111) * (value / max_value) }}, {{ 105 + (120 - 105) * (value / max_value) }}, 0.7);">
+                                {{ value }}
+                            </td>                        
+                        {% endfor %}
+                        <td style="background-color: rgba({{ 255 - (255 - 80) * (frequency_row[1].sum() / max_value) }}, {{ 111 + (200 - 111) * (frequency_row[1].sum() / max_value) }}, {{ 105 + (120 - 105) * (frequency_row[1].sum() / max_value) }}, 0.7);">
+                            {{ frequency_row[1].sum() }}
+                        </td>                        
+                    </tr>
+                    <tr class="even percentage-row" style="display: none;">
+                        <td class="percentage-cell"></td>
+                        <td class="percentage-cell"></td>
+                        <td class="percentage-cell">Column%</td>
+                        <td class="percentage-cell">
+                            {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                        </td>
+                        <td class="percentage-cell">
+                            {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                        </td>
+                        {% for total_value in result[dependent_variable]['breakdown_table_frequency'].sum() %}
+                            {% set percentage = (total_value / result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 %}
+                            <td class="percentage-cell">{{ '%.2f'|format(percentage) }}%</td>
+                        {% endfor %}
+                        <td class="percentage-cell">
+                            {{ (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) / (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 }}%
+                        </td>
+                    </tr>
+                {% endfor %}
+                <tr>
+                    <td></td>
+                    <td>Total</td>
+                    <td>Frequency</td>
+                    <td>{{ result[dependent_variable]['total_selected_row_count'] }}</td>
+                    <td>{{ result[dependent_variable]['total_selected_row_count'] }}</td>
+                    {% for total_value in result[dependent_variable]['breakdown_table_frequency'].sum() %}
+                        <td style="background-color: rgba({{ 255 - (255 - 80) * (total_value / max_value) }}, {{ 111 + (200 - 111) * (total_value / max_value) }}, {{ 105 + (120 - 105) * (total_value / max_value) }}, 0.7);">{{ total_value }}</td>
+                    {% endfor %}
+                    <td style="background-color: rgba({{ 255 - (255 - 80) * (result[dependent_variable]['breakdown_table_frequency'].sum().sum() / max_value) }}, {{ 111 + (200 - 111) * (result[dependent_variable]['breakdown_table_frequency'].sum().sum() / max_value) }}, {{ 105 + (120 - 105) * (result[dependent_variable]['breakdown_table_frequency'].sum().sum() / max_value) }}, 0.7);">{{ result[dependent_variable]['breakdown_table_frequency'].sum().sum() }}</td>
+                </tr>                                
+                <tr class="even percentage-row" style="display: none;">
+                    <td class="percentage-cell"></td>
+                    <td class="percentage-cell"></td>
+                    <td class="percentage-cell">Column%</td>
+                    <td class="percentage-cell">
+                        {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                    </td>
+                    <td class="percentage-cell">
+                        {{ (result[dependent_variable]['total_selected_row_count'] / result[dependent_variable]['total_selected_row_count']) * 100 }}%
+                    </td>
+                    {% for total_value in result[dependent_variable]['breakdown_table_frequency'].sum() %}
+                        {% set percentage = (total_value / result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 %}
+                        <td class="percentage-cell">{{ '%.2f'|format(percentage) }}%</td>
+                    {% endfor %}
+                    <td class="percentage-cell" >
+                        {{ (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) / (result[dependent_variable]['breakdown_table_frequency'].sum().sum()) * 100 }}%
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+    </div>
+    {% endif %}
+    <div>
+        <button id="showPercentagesBtn">Show Percentages</button>
+        <button id="hidePercentagesBtn" style="display: none;">Hide Percentages</button>
+    </div>
+
+    <br>
+    <div>
+        <button id="getSelectedDataBtn">Get Selected Data</button>
+        <div id="selectedDataContainer" style="display: none;">
+            <table id="selectedDataTable">
+                <thead>
+                    <tr id="selectedDataHeaders">
+                        <!-- Dynamic headers will be inserted here -->
+                    </tr>
+                </thead>
+                <tbody id="selectedDataBody">
+                    <!-- Dynamic rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <button id="computeTTestBtn" class="btn btn-primary compute-ttest-btn" type="button">Compute T-Test</button>
+    <div id="tTestResult" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>T-Statistic</th>
+                    <th>P-Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="tStatValue"></td>
+                    <td id="pValue"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+
+
+
+{% endblock %}
+
+
+
+<!-- <div class="grid grid-cols-5 max-w-full mx-auto">
+    <button class="bg-purple-700 h-[100%] ml-2 shadow rounded p-2 hover:bg-green-700 text-lg font-medium">Generate Analysis</button>
+    <button class="bg-purple-700 h-[100%] ml-2 shadow rounded p-2 hover:bg-green-700 text-lg font-medium">Export CSV</button>
+</div>
+<div class="grid grid-cols-12 p-2 max-w-full mx-auto" >
+    Forms will be appended here
+    
+    <div class="bg-white shadow-lg p-5 col-span-11 shadow border rounded flex w-100 gap-2 overflow-auto" id="form_container">
+        Form loop
+
+        End of form loop
+    </div>
+    <div class="col-span-1">
+        <button id="addRowButton" class="bg-purple-700 h-[80%] ml-2 shadow rounded p-2 flex items-center justify-center text-lg font-medium">Add Row
+            <svg class="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M5 12h14m-7 7V5" />
+            </svg>
+        </button>
+    
+            <button id="deleteRowButton" class="bg-purple-700 h-[17%] ml-2 shadow rounded p-2 hover:bg-red-700 text-lg font-medium">Delete</button>
+    
+    </div>
+    
+</div>
+
+
+
+
+<script>
+    // Function to handle adding a new form horizontally
+    function addRowOption() {
+        var container = document.getElementById('form_container');
+        var newDiv = document.createElement('div');
+        newDiv.className = 'bg-white rounded-lg flex-none p-5 cols-span-2 shadow w-[70vmin]';
+        newDiv.innerHTML = `
+
+                <form action="/visualize_data" method="post">
+                    <div class="flex-none mb-2">
+                        <label for="column" class="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Select Column:</label>
+                        <select name="column" id="column">
+                            {% for col, info in column_info.items() %}
+                                {% if info %}
+                                    {% if info.data_type %}
+                                        <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option>
+                                    {% else %}
+                                        <option value="{{ col }}">{{ info.name }}</option>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <label for="visualization" class="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Select Variable Type:</label>
+                        <select name="visualization" id="visualization">
+                            <option value="IV">Independent Variable</option>
+                            <option value="DV">Dependent variable</option>
+                        </select>
+                    </div>
+                </form>
+        
+        `;
+        container.insertBefore(newDiv, container.lastElementChild);
+    }
+    addRowOption();
+    addRowOption();
+
+    // Attach event listener to the button
+    document.getElementById('addRowButton').addEventListener('click', function () {
+        addRowOption();
+    });
+
+    //delete function
+    function deleteRowOption() {
+        var container = document.getElementById('form_container');
+        var rows = container.getElementsByClassName('bg-white rounded-lg flex-none p-5 cols-span-2 shadow w-[70vmin]');
+        if (rows.length > 1) { // Ensure there is at least one row remaining
+            container.removeChild(rows[rows.length - 1]); // Remove the last row
+        } else {
+            showToast('Cannot delete the last row!');
+        }
+    }
+    // Attach event listener to the Delete Row button
+    document.getElementById('deleteRowButton').addEventListener('click', function () {
+        deleteRowOption();
+    });
+
+    function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'flex items-center p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 font-medium';
+    
+    const icon = document.createElement('svg');
+    icon.className = 'flex-shrink-0 inline w-4 h-4 me-3';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    icon.setAttribute('fill', 'currentColor');
+    icon.setAttribute('viewBox', '0 0 20 20');
+    icon.innerHTML = '<path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>';
+
+    const spanSrOnly = document.createElement('span');
+    spanSrOnly.className = 'sr-only';
+
+
+    const divContent = document.createElement('div');
+    const spanBold = document.createElement('span');
+    const spanText = document.createElement('span');
+    spanText.textContent = message;
+
+    divContent.appendChild(spanBold);
+    divContent.appendChild(spanText);
+
+    toast.appendChild(icon);
+    toast.appendChild(spanSrOnly);
+    toast.appendChild(divContent);
+
+    document.body.appendChild(toast);
+
+    // Center the toast horizontally and vertically
+    toast.style.position = 'fixed';
+    toast.style.left = '50%';
+    toast.style.top = '50%';
+    toast.style.transform = 'translate(-50%, -50%)';
+
+    setTimeout(() => {
+        toast.style.opacity = '1';
+    }, 100);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+    }, 3000);
+    setTimeout(() => {
+        document.body.removeChild(toast);
+    }, 3500);
+}
+
+</script> -->

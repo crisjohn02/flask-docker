@@ -12,7 +12,7 @@ T-Test
         var newRowOption = document.createElement('div');
         newRowOption.className = 'row-option';
         newRowOption.innerHTML = '<label>Select Column for Rows:</label><select name="column_for_rows" class="column-for-rows">' + 
-                                 '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
+                                '{% for col, info in column_info.items() %} {% if info %} {% if info.data_type %} <option value="{{ col }}">({{ info.data_type.upper() }}) {{ info.name }}</option> {% else %} <option value="{{ col }}">{{ info.name }}</option> {% endif %} {% endif %} {% endfor %}</select><br>';
         columnForRowsDiv.appendChild(newRowOption);
     }
 
@@ -278,7 +278,8 @@ T-Test
                             {% set significance = "significant" if p_value < 0.05 else "not significant" %}
                             {% set p_sign = ">" if p_value > 0.05 else "<" %}
                             
-                            The association between {{ selected_row }} and {{ column_for_columns }} is {{ significance }} based on a t-statistic of {{ '%.2f'|format(t_statistic) }} and a p-value {{ p_sign }} 0.05. 
+                            The association between {{ selected_row }} and {{ column_for_columns }} is {{ significance }} 
+                            based on a t-statistic of {{ '%.2f'|format(t_statistic) }} and a p-value {{ p_sign }} 0.05. 
                         {% endif %}
                     </tr>
                 </tbody>
@@ -290,7 +291,7 @@ T-Test
 </div>
 
 
- <button class="custom-button" onclick="exportCsv()">Export to CSV</button>
+<button class="custom-button" onclick="exportCsv()">Export to CSV</button>
 </div>
     <script src="@@path/vendor/simple-datatables/dist/umd/simple-datatables.js"></script>
 {% endblock %}
