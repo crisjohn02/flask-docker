@@ -1,0 +1,377 @@
+{
+    "rows": [
+        {
+            "name": "Age_group",
+            "values": [
+                {
+                    "label": "Group 1: 12 -14",
+                    "value": 1
+                },
+                {
+                    "label": "Group 2: 15 - 16",
+                    "value": 2
+                },
+                {
+                    "label": "Group 3: 17 - 18",
+                    "value": 3
+                }
+            ],
+            "variable": "Age_group",
+            "data_type": "nominal"
+        },
+        {
+            "name": "Body_Mass_Index",
+            "values": [
+                {
+                    "label": "BMI 1: Underweight < 18.5",
+                    "value": 1
+                },
+                {
+                    "label": "BMI 2: Normal weight 18.5 - 25",
+                    "value": 2
+                },
+                {
+                    "label": "BMI 3: Overweight 25 - 30",
+                    "value": 3
+                },
+                {
+                    "label": "BMI 4: Obese > 30",
+                    "value": 4
+                }
+            ],
+            "variable": "Body_Mass_Index",
+            "data_type": "nominal"
+        },
+        {
+            "name": "Which one of the following best describes your ethnicity?",
+            "values": [
+                {
+                    "label": "White British",
+                    "value": 1
+                },
+                {
+                    "label": "Mixed or multiple ethnic groups",
+                    "value": 2
+                },
+                {
+                    "label": "Asian or Asian British",
+                    "value": 3
+                },
+                {
+                    "label": "Black, African, Caribbean, Black British",
+                    "value": 4
+                },
+                {
+                    "label": "Other ethnic group",
+                    "value": 5
+                },
+                {
+                    "label": "Rather not say",
+                    "value": 6
+                }
+            ],
+            "variable": "a10",
+            "data_type": "ordinal"
+        },
+        {
+            "name": "What year are you in school?",
+            "values": [
+                {
+                    "label": "Year 8",
+                    "value": 1
+                },
+                {
+                    "label": "Year 9",
+                    "value": 2
+                },
+                {
+                    "label": "Year 10",
+                    "value": 3
+                },
+                {
+                    "label": "Year 11",
+                    "value": 4
+                },
+                {
+                    "label": "Year 12",
+                    "value": 5
+                },
+                {
+                    "label": "Year 13",
+                    "value": 6
+                },
+                {
+                    "label": "Not in school",
+                    "value": 7
+                }
+            ],
+            "variable": "a11",
+            "data_type": "ordinal"
+        },
+        {
+            "name": "What is your height?",
+            "values": [
+                {
+                    "label": "4'  OR 1.22m",
+                    "value": 1
+                },
+                {
+                    "label": "4' 1 OR 1.24m",
+                    "value": 2
+                },
+                {
+                    "label": "4' 2 OR 1.27m",
+                    "value": 3
+                },
+                {
+                    "label": "4' 3 OR 1.30m",
+                    "value": 4
+                },
+                {
+                    "label": "4' 4 OR 1.32m",
+                    "value": 5
+                },
+                {
+                    "label": "4' 5 OR 1.35m",
+                    "value": 6
+                },
+                {
+                    "label": "4' 6 OR 1.37m",
+                    "value": 7
+                },
+                {
+                    "label": "4' 7 OR 1.40m",
+                    "value": 8
+                },
+                {
+                    "label": "4' 8 OR 1.42m",
+                    "value": 9
+                },
+                {
+                    "label": "4' 9 OR 1.45m",
+                    "value": 10
+                },
+                {
+                    "label": "4' 10 OR 1.47m",
+                    "value": 11
+                },
+                {
+                    "label": "4' 11 OR 1.50m",
+                    "value": 12
+                },
+                {
+                    "label": "5'  OR 1.52m",
+                    "value": 13
+                },
+                {
+                    "label": "5' 1 OR 1.55m",
+                    "value": 14
+                },
+                {
+                    "label": "5' 2 OR 1.57m",
+                    "value": 15
+                },
+                {
+                    "label": "5' 3 OR 1.60m",
+                    "value": 16
+                },
+                {
+                    "label": "5' 4 OR 1.63m",
+                    "value": 17
+                },
+                {
+                    "label": "5' 5 OR 1.65m",
+                    "value": 18
+                },
+                {
+                    "label": "5' 6 OR 1.68m",
+                    "value": 19
+                },
+                {
+                    "label": "5' 7 OR 1.70m",
+                    "value": 20
+                },
+                {
+                    "label": "5' 8 OR 1.73m",
+                    "value": 21
+                },
+                {
+                    "label": "5' 9 OR 1.75m",
+                    "value": 22
+                },
+                {
+                    "label": "5' 10 OR 1.78m",
+                    "value": 23
+                },
+                {
+                    "label": "5' 11 OR 1.80m",
+                    "value": 24
+                },
+                {
+                    "label": "6'  OR 1.83m",
+                    "value": 25
+                },
+                {
+                    "label": "6' 1 OR 1.85m",
+                    "value": 26
+                },
+                {
+                    "label": "6' 2 OR 1.88m",
+                    "value": 27
+                },
+                {
+                    "label": "6' 3 OR 1.91m",
+                    "value": 28
+                },
+                {
+                    "label": "6' 4 OR 1.93m",
+                    "value": 29
+                },
+                {
+                    "label": "6' 5 OR 1.96m",
+                    "value": 30
+                },
+                {
+                    "label": "6' 6 OR 1.98m",
+                    "value": 31
+                },
+                {
+                    "label": "6' 7 OR 2.01m",
+                    "value": 32
+                },
+                {
+                    "label": "6' 8 OR 2.03m",
+                    "value": 33
+                },
+                {
+                    "label": "6' 9 OR 2.06m",
+                    "value": 34
+                },
+                {
+                    "label": "6' 10 OR 2.08m",
+                    "value": 35
+                },
+                {
+                    "label": "6' 11 OR 2.11m",
+                    "value": 36
+                },
+                {
+                    "label": "7'  OR 2.13m",
+                    "value": 37
+                }
+            ],
+            "variable": "a12",
+            "data_type": "nominal"
+        },
+        {
+            "name": "How regularly do you do physical exercise (gym, yoga, running…?)",
+            "values": [
+                {
+                    "label": "Never",
+                    "value": 1
+                },
+                {
+                    "label": "1 or 2 times a week",
+                    "value": 2
+                },
+                {
+                    "label": "3 times a week",
+                    "value": 3
+                },
+                {
+                    "label": "More than 3 times a week",
+                    "value": 4
+                }
+            ],
+            "variable": "a14",
+            "data_type": "nominal"
+        },
+        {
+            "name": "What are your dietary requirements ?",
+            "values": [
+                {
+                    "label": "Vegan",
+                    "value": 1
+                },
+                {
+                    "label": "Vegetarian",
+                    "value": 2
+                },
+                {
+                    "label": "Gluten Free",
+                    "value": 3
+                },
+                {
+                    "label": "Pescatarian",
+                    "value": 4
+                },
+                {
+                    "label": "Dairy Free",
+                    "value": 5
+                },
+                {
+                    "label": "None of the Above",
+                    "value": 6
+                }
+            ],
+            "variable": "a15",
+            "data_type": "nominal"
+        },
+        {
+            "name": "Are you left-handed or right-handed?",
+            "values": [
+                {
+                    "label": "Left-handed",
+                    "value": 1
+                },
+                {
+                    "label": "Right-handed",
+                    "value": 2
+                }
+            ],
+            "variable": "a16",
+            "data_type": "ordinal"
+        }
+    ],
+    "columns": [
+        {
+            "name": "Gender",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                }
+            ],
+            "variable": "Gender",
+            "data_type": "nominal"
+        },
+        {
+            "name": "Gender",
+            "data_type": "nominal",
+            "values": [
+                {
+                    "label": "Male",
+                    "value": 1
+                },
+                {
+                    "label": "Female",
+                    "value": 2
+                },
+                {
+                    "label": "Non-Binary",
+                    "value": 3
+                },
+                {
+                    "label": "Prefer not to say",
+                    "value": 4
+                }
+            ],
+            "variable": "a3"
+        }
+    ],
+    "attached_surveys": null
+}

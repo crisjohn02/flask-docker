@@ -14,6 +14,7 @@ import io
 import base64
 import socket
 import math
+from itertools import product
 from collections import defaultdict
 from flask_cors import CORS
 
@@ -61,6 +62,52 @@ def get_column_info(selected_columns, config_path):
         return name, data_type
     else:
         return None, None
+    
+# Function to get the name and data type of the selected column based on the config file
+def get_row_info(selected_columns, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    variable_info = next((x for x in config['rows'] if x['variable'] == selected_columns), None)
+    if variable_info:
+        name = variable_info['name']
+        return name
+    else:
+        return None
+
+# Function to get the name and data type of the selected column based on the config file
+def get_column_info(selected_columns, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    variable_info = next((x for x in config['columns'] if x['variable'] == selected_columns), None)
+    if variable_info:
+        name = variable_info['name']
+        return name
+    else:
+        return None
+    
+def get_column_label(variable, value, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    for item in config['columns']:
+        if item['variable'] == variable:
+            for value_item in item.get('values', []):
+                if value_item['value'] == value:
+                    return value_item['label']
+    return value  
+
+def get_row_label(variable, value, config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+    
+    for item in config['rows']:
+        if item['variable'] == variable:
+            for value_item in item.get('values', []):
+                if value_item['value'] == value:
+                    return value_item['label']
+    return value  # Return original value if not found in survey config
 
 @app.route('/alldata', methods=['GET'])
 def alldata():
@@ -291,7 +338,7 @@ def visualize_table(selected_data):
 
 #CROSSTAB AND CHI-SQUARE API
 # Crosstab API for Vue.js
-def process_crosstabs(rows, independent_variables, dependent_variables):
+def process_crosstabs(rows, columns_variables, rows_variables):
     data_dict = {}
     max_length = 0
 
@@ -311,15 +358,15 @@ def process_crosstabs(rows, independent_variables, dependent_variables):
     df = pd.DataFrame(data_dict)
 
     results = {}
-    for independent_var in independent_variables:
-        labels_independent = df[independent_var].apply(lambda x: get_label(independent_var, x, 'static/survey_config.json'))
-        for dependent_var in dependent_variables:
-            labels_dependent = df[dependent_var].apply(lambda x: get_label(dependent_var, process_value(x), 'static/survey_config.json'))
+    for columns_var in columns_variables:
+        labels_columns = df[columns_var].apply(lambda x: get_column_label(columns_var, x, 'static/crosstab_config.json'))
+        for rows_var in rows_variables:
+            labels_rows = df[rows_var].apply(lambda x: get_row_label(rows_var, process_value(x), 'static/crosstab_config.json'))
 
-            crosstab_result = pd.crosstab(labels_independent, labels_dependent, margins=True, margins_name='Total')
-            crosstab_result_row_percent = pd.crosstab(labels_independent, labels_dependent, normalize='index')
-            crosstab_result_column_percent = pd.crosstab(labels_independent, labels_dependent, normalize='columns')
-            crosstab_result_total_percent = pd.crosstab(labels_independent, labels_dependent, normalize='all', margins=True, margins_name='Total')
+            crosstab_result = pd.crosstab(labels_columns, labels_rows, margins=True, margins_name='Total')
+            crosstab_result_row_percent = pd.crosstab(labels_columns, labels_rows, normalize='index')
+            crosstab_result_column_percent = pd.crosstab(labels_columns, labels_rows, normalize='columns')
+            crosstab_result_total_percent = pd.crosstab(labels_columns, labels_rows, normalize='all', margins=True, margins_name='Total')
 
             # Calculate row totals
             row_totals = crosstab_result_row_percent.sum(axis=1)
@@ -333,7 +380,7 @@ def process_crosstabs(rows, independent_variables, dependent_variables):
 
             chi2_stat, p_val, dof, expected = chi2_contingency(crosstab_result)
 
-            results[f"{independent_var},{dependent_var}"] = {
+            results[f"{columns_var},{rows_var}"] = {
                 'crosstab': crosstab_result.to_dict(),
                 'row_percentage': crosstab_result_row_percent.to_dict(),
                 'column_percentage': crosstab_result_column_percent.to_dict(),
@@ -346,16 +393,16 @@ def process_crosstabs(rows, independent_variables, dependent_variables):
     return results
 
 
-@app.route('/crosstabs/<independent>/<dependent>', methods=['GET', 'POST'])
-def crosstabs(independent, dependent):
-    dependent_variables = dependent.split(',')
-    independent_variables = independent.split(',')
+@app.route('/crosstabs/<columns>/<rows>', methods=['GET', 'POST'])
+def crosstabs(columns, rows):
+    rows_variables = rows.split(',')
+    columns_variables = columns.split(',')
     cur = mysql.connection.cursor()
     cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
     rows = cur.fetchall()
     cur.close()
 
-    results = process_crosstabs(rows, independent_variables, dependent_variables)
+    results = process_crosstabs(rows, columns_variables, rows_variables)
 
     # Convert dictionary to JSON string
     json_string = json.dumps(results)
@@ -365,7 +412,7 @@ def crosstabs(independent, dependent):
 
 
 # Export to CSV API
-def process_crosstabs_csv(rows, independent_variables, dependent_variables):
+def process_crosstabs_csv(rows, columns_variables, rows_variables):
     data_dict = {}
     max_length = 0  
     
@@ -385,22 +432,22 @@ def process_crosstabs_csv(rows, independent_variables, dependent_variables):
     df = pd.DataFrame(data_dict)
 
     results = {}
-    independent_var_counts = {}
-    dependent_var_counts = {}
-    dependent_var_percentage = {}
-    for independent_var in independent_variables:
-        independent_var_counts[independent_var] = df[independent_var].value_counts()
+    columns_var_counts = {}
+    rows_var_counts = {}
+    rows_var_percentage = {}
+    for columns_var in columns_variables:
+        columns_var_counts[columns_var] = df[columns_var].value_counts()
         
-        labels_independent = df[independent_var].apply(lambda x: get_label(independent_var, x, 'static/survey_config.json'))
-        for dependent_var in dependent_variables:
-            labels_dependent = df[dependent_var].apply(lambda x: get_label(dependent_var, process_value(x), 'static/survey_config.json'))
-            dependent_var_counts[dependent_var] = labels_dependent.value_counts().sort_index()  # Sorting counts by index
-            dependent_var_percentage[dependent_var] = ((dependent_var_counts[dependent_var]) / len(df[dependent_var])) * 100
+        labels_columns = df[columns_var].apply(lambda x: get_column_label(columns_var, x, 'static/crosstab_config.json'))
+        for rows_var in rows_variables:
+            labels_rows = df[rows_var].apply(lambda x: get_row_label(rows_var, process_value(x), 'static/crosstab_config.json'))
+            rows_var_counts[rows_var] = labels_rows.value_counts().sort_index()  # Sorting counts by index
+            rows_var_percentage[rows_var] = ((rows_var_counts[rows_var]) / len(df[rows_var])) * 100
 
-            crosstab_result = pd.crosstab(labels_dependent, labels_independent, margins=True, margins_name='Total')
-            crosstab_result_row_percent = pd.crosstab(labels_dependent, labels_independent, normalize='index')
-            crosstab_result_column_percent = pd.crosstab(labels_dependent, labels_independent, normalize='columns')
-            crosstab_result_total_percent = pd.crosstab(labels_dependent, labels_independent, normalize='all', margins=True, margins_name='Total')
+            crosstab_result = pd.crosstab(labels_rows, labels_columns, margins=True, margins_name='Total')
+            crosstab_result_row_percent = pd.crosstab(labels_rows, labels_columns, normalize='index')
+            crosstab_result_column_percent = pd.crosstab(labels_rows, labels_columns, normalize='columns')
+            crosstab_result_total_percent = pd.crosstab(labels_rows, labels_columns, normalize='all', margins=True, margins_name='Total')
 
             # Calculate row totals
             row_totals = crosstab_result_row_percent.sum(axis=1)
@@ -415,9 +462,9 @@ def process_crosstabs_csv(rows, independent_variables, dependent_variables):
             chi2_stat, p_val, _, _ = chi2_contingency(crosstab_result)
             degrees_of_freedom = (crosstab_result.shape[0] - 2) * (crosstab_result.shape[1] - 2)
 
-            if independent_var not in results:
-                results[independent_var] = {}
-            results[independent_var][dependent_var] = {
+            if columns_var not in results:
+                results[columns_var] = {}
+            results[columns_var][rows_var] = {
                 'crosstab': crosstab_result,
                 'row_percentage': crosstab_result_row_percent,
                 'column_percentage': crosstab_result_column_percent,
@@ -427,18 +474,18 @@ def process_crosstabs_csv(rows, independent_variables, dependent_variables):
                 'p_value': p_val
             }
 
-    return results, independent_var_counts, dependent_var_counts, dependent_var_percentage
+    return results, columns_var_counts, rows_var_counts, rows_var_percentage
 
-@app.route('/export_csv/<independent>/<dependent>/<csv_outputs>', methods=['GET'])
-def export_crosstabs_csv(independent, dependent, csv_outputs):
-    independent_variables = independent.split(',')
-    dependent_variables = dependent.split(',')
+@app.route('/export_csv/<columns>/<rows>/<csv_outputs>', methods=['GET'])
+def export_crosstabs_csv(columns, rows, csv_outputs):
+    columns_variables = columns.split(',')
+    rows_variables = rows.split(',')
     cur = mysql.connection.cursor()
     cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
-    rows = cur.fetchall()
+    data = cur.fetchall()
     cur.close()
 
-    results, independent_var_counts, dependent_var_counts, dependent_var_percentage = process_crosstabs_csv(rows, independent_variables, dependent_variables)
+    results, columns_var_counts, rows_var_counts, rows_var_percentage = process_crosstabs_csv(data, columns_variables, rows_variables)
 
     # Check if csv_output parameter is valid
     valid_outputs = ['frequency_crosstab', 'row_percentage', 'column_percentage', 'total_percentage', 'total_crosstab', 'chi_square_results', 'row_crosstab', 'column_crosstab']
@@ -449,22 +496,21 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
 
     # Export selected outputs to CSV
     csv_data = []
-
-    for independent_var in independent_variables:
-        for dependent_var in dependent_variables:
-            # Retrieve names of independent and dependent variables
-            independent_name, _ = get_column_info(independent_var, 'static/survey_config.json')
-            dependent_name, _ = get_column_info(dependent_var, 'static/survey_config.json')
-
+    
+    for columns_var in columns_variables:
+        columns_name = get_column_info(columns_var, 'static/crosstab_config.json')
+        csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f'"{columns_name}"'])
+        
+        for rows_var in rows_variables:
+            rows_name = get_row_info(rows_var, 'static/crosstab_config.json')
+            
             for csv_output in selected_outputs:
                 if csv_output == 'frequency_crosstab':
-                    crosstab = results[independent_var][dependent_var]['crosstab']
-                    dependent_labels = [f"{dependent_name}"] + [''] * 3 + [f'"{label}"' for label in crosstab.columns.tolist()]
-
-                    csv_data.append([''] * 2 + [f"All"] + [''] + [''] + [f"{independent_name}"])
-                    csv_data.append(["Crosstab"])
-                    csv_data.append(dependent_labels)
-                    dep_values = dependent_var_counts[dependent_var]
+                    crosstab = results[columns_var][rows_var]['crosstab']
+                    rows_labels = [''] + [''] * 3 + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    csv_data.append([f'"{rows_name}"'])
+                    csv_data.append(rows_labels)
+                    dep_values = rows_var_counts[rows_var]
                     dep_values_subset = dep_values[:(len(crosstab) - 1)]
                     dep_values_sum = sum(dep_values_subset)
                     for (index, row), dep in zip(crosstab.iterrows(), dep_values_subset):
@@ -478,14 +524,12 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
 
                 elif csv_output in ['row_percentage', 'column_percentage', 'total_percentage']:
                     percentage_type = csv_output.split('_')[0].capitalize()
-                    percentage_data = results[independent_var][dependent_var][csv_output]
-                    dependent_labels = [f"{dependent_name}"] + [''] * 3 + [f'"{label}"' for label in percentage_data.columns.tolist()]
-                    
-                    csv_data.append([''] + [''] + ['All'] + [''] * 3 + [f"{independent_name}"])
-                    csv_data.append([f"{percentage_type} Percentage"])
-                    csv_data.append(dependent_labels)
-                    crosstab = results[independent_var][dependent_var]['crosstab']
-                    dep_values = dependent_var_counts[dependent_var]
+                    percentage_data = results[columns_var][rows_var][csv_output]
+                    rows_labels = [''] + [''] * 3 + [f'"{label}"' for label in percentage_data.columns.tolist()]
+                    csv_data.append([f'"{rows_name}"'])
+                    csv_data.append(rows_labels)
+                    crosstab = results[columns_var][rows_var]['crosstab']
+                    dep_values = rows_var_counts[rows_var]
                     dep_values_subset = dep_values[:(len(crosstab) - 1)]
                     dep_values_sum = sum(dep_values_subset)
                     dep_values_percentage = (dep_values_subset / dep_values_sum) * 100
@@ -508,42 +552,38 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
                     csv_data.append([''])
 
                 elif csv_output == 'chi_square_results':
-                    csv_data.append(["Chi-Square Result"])
-                    csv_data.append([f"{dependent_name} vs {independent_name}"])
-                    p_value = results[independent_var][dependent_var]['p_value']
-                    chi_square_statistic = results[independent_var][dependent_var]['chi_square_statistic']
-                    degrees_of_freedom = results[independent_var][dependent_var]['degrees_of_freedom']
+                    csv_data.append([f'"{rows_name} vs {columns_name}"'])
+                    p_value = results[columns_var][rows_var]['p_value']
+                    chi_square_statistic = results[columns_var][rows_var]['chi_square_statistic']
+                    degrees_of_freedom = results[columns_var][rows_var]['degrees_of_freedom']
                     significance = "<" if p_value < 0.05 else ">"
                     significance_text = "significant" if p_value < 0.05 else "non-significant"
-                    total_values = (independent_var_counts[independent_var]).sum()
-                    csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
+                    total_values = (columns_var_counts[columns_var]).sum()
+                    csv_data.append([f'"The association between {rows_name} and which best describes your {columns_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
                     csv_data.append([''])
                 
                 elif csv_output in ['row_crosstab', 'column_crosstab', 'total_crosstab']:
                     if csv_output == 'total_crosstab':
-                        percentage_type = results[independent_var][dependent_var]['total_percentage']
-                        csv_data.append(["Crosstabs and Total Percentage Data"])
+                        percentage_type = results[columns_var][rows_var]['total_percentage']
                     elif csv_output == 'row_crosstab':
-                        percentage_type = results[independent_var][dependent_var]['row_percentage']
-                        csv_data.append(["Crosstabs and Row Percentage Data"])
+                        percentage_type = results[columns_var][rows_var]['row_percentage']
                     elif csv_output == 'column_crosstab':   
-                        percentage_type = results[independent_var][dependent_var]['column_percentage']
-                        csv_data.append(["Crosstabs and Column Percentage Data"])
+                        percentage_type = results[columns_var][rows_var]['column_percentage']
 
-                    csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f"{independent_name}"])
-                    crosstab = results[independent_var][dependent_var]['crosstab']
+                    crosstab = results[columns_var][rows_var]['crosstab']
                     crosstab_iterator = crosstab.iterrows()
-                    dep_values = dependent_var_counts[dependent_var]
-                    p_value = results[independent_var][dependent_var]['p_value']
-                    chi_square_statistic = results[independent_var][dependent_var]['chi_square_statistic']
-                    degrees_of_freedom = results[independent_var][dependent_var]['degrees_of_freedom']
+                    dep_values = rows_var_counts[rows_var]
+                    p_value = results[columns_var][rows_var]['p_value']
+                    chi_square_statistic = results[columns_var][rows_var]['chi_square_statistic']
+                    degrees_of_freedom = results[columns_var][rows_var]['degrees_of_freedom']
                     significance = "<" if p_value < 0.05 else ">"
                     significance_text = "significant" if p_value < 0.05 else "non-significant"
-                    total_values = (independent_var_counts[independent_var]).sum()
-                    dependent_labels = [f"{dependent_name}"] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
-                    csv_data.append(dependent_labels)
+                    total_values = (columns_var_counts[columns_var]).sum()
+                    rows_labels = [''] + [''] + [''] + [''] + [f'"{label}"' for label in crosstab.columns.tolist()]
+                    csv_data.append([f'"{rows_name}"'])
+                    csv_data.append(rows_labels)
                     
-                    dep_values = dependent_var_counts[dependent_var]
+                    dep_values = rows_var_counts[rows_var]
                     dep_values_subset = dep_values[:(len(crosstab) - 1)]
                     dep_values_sum = sum(dep_values_subset)
                     dep_values_percentage = (dep_values_subset / dep_values_sum) * 100
@@ -576,16 +616,16 @@ def export_crosstabs_csv(independent, dependent, csv_outputs):
                         csv_data.append([last_index_value] + ['Frequency'] + [dep_values_sum] + [dep_values_sum] + last_row_values)
                         csv_data.append([''] + ['Column%'] + [f'{dep_percent_sum:.2f}%'] + [f'{dep_percent_sum:.2f}%'] + [f"{value * 100:.2f}%" for value in _last_row_values] )
 
-                    csv_data.append([f'"The association between {dependent_name} and which best describes your {independent_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
+                    csv_data.append([f'"The association between {rows_name} and which best describes your {columns_name}? is {significance_text} X\u00B2 ({total_values}) = {chi_square_statistic:.2f}, df = {degrees_of_freedom}, p {significance} 0.5"'])
                     csv_data.append([''])
-            csv_data.append([""])
+            csv_data.append([''])
         csv_data.append([""])
 
     # Generate CSV string
     csv_string = "\ufeff" + "\n".join([",".join(map(str, row)) for row in csv_data])
 
     # Set filename based on selected csv_outputs
-    filename = f"{'_'.join(selected_outputs)}_{'_'.join(independent_variables)}_{'_'.join(dependent_variables)}.csv"
+    filename = f"{'_'.join(selected_outputs)}_{'_'.join(columns_variables)}_{'_'.join(rows_variables)}.csv"
 
     return Response(csv_string, mimetype='text/csv;charset=utf-8;', headers={'Content-disposition': f'attachment; filename={filename}'})
 
