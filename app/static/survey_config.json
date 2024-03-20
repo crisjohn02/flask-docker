@@ -16,24 +16,32 @@
             "variable": "a1"
         },
         {
-            "name": "Age",
-            "data_type": "Ordinal",
+            "name": "Actual Age",
+            "data_type": "Nominal",
             "values": [
                 {
-                    "label": "Child",
-                    "value": 1
+                    "label": 13,
+                    "value": 13
                 },
                 {
-                    "label": "Child",
-                    "value": 2
+                    "label": 14,
+                    "value": 14
                 },
                 {
-                    "label": "Child",
-                    "value": 3
+                    "label": 15,
+                    "value": 15
                 },
                 {
-                    "label": "Parents",
-                    "value": 4
+                    "label": 16,
+                    "value": 16
+                },
+                {
+                    "label": 17,
+                    "value": 17
+                },
+                {
+                    "label": 18,
+                    "value": 18
                 }
             ],
             "variable": "a2"
