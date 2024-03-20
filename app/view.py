@@ -30,6 +30,27 @@ app.config['MYSQL_DB'] = 'fluent'
 # Initialize MySQL
 mysql = MySQL(app)
 
+
+# Get config
+def get_config():
+    with open('static/crosstab_config.json', 'r') as config_file:
+        config = json.load(config_file)
+
+    return config
+
+# Get the config row/column element
+def get_element(config, variable, value, el_type='rows'):
+    # Create a dictionary to map variables to their values arrays
+    variable_values_map = {el['variable']: el['values'] for el in config[el_type]}
+
+    values = variable_values_map.get(variable)
+    if values:
+        for item in values:
+            if item['value'] == value:
+                return item
+    return {'label': None}
+
+
 # Function to get label based on variable and value
 def get_label(variable, value, config_path):
     with open(config_path, 'r') as config_file:
@@ -338,12 +359,12 @@ def visualize_table(selected_data):
 
 #CROSSTAB AND CHI-SQUARE API
 # Crosstab API for Vue.js
-def process_crosstabs(rows, columns_variables, rows_variables):
+def process_crosstabs(records, config):
     data_dict = {}
     max_length = 0
 
-    for row in rows:
-        url_data = json.loads(row[0])
+    for record in records:
+        url_data = json.loads(record[0])
         for key, value in url_data.items():
             if value in (None, "null", "", "-"):
                 value = None
@@ -358,10 +379,12 @@ def process_crosstabs(rows, columns_variables, rows_variables):
     df = pd.DataFrame(data_dict)
 
     results = {}
-    for columns_var in columns_variables:
-        labels_columns = df[columns_var].apply(lambda x: get_column_label(columns_var, x, 'static/crosstab_config.json'))
-        for rows_var in rows_variables:
-            labels_rows = df[rows_var].apply(lambda x: get_row_label(rows_var, process_value(x), 'static/crosstab_config.json'))
+    for columns in config['columns']:
+        columns_var = columns['variable']
+        labels_columns = df[columns_var].apply(lambda x: get_element(config, columns_var, x, 'columns')['label'])
+        for rows in config['rows']:
+            rows_var = rows['variable']
+            labels_rows = df[rows_var].apply(lambda x: get_element(config, rows_var, process_value(x), 'rows')['label'])
 
             crosstab_result = pd.crosstab(labels_columns, labels_rows, margins=True, margins_name='Total')
             crosstab_result_row_percent = pd.crosstab(labels_columns, labels_rows, normalize='index')
@@ -393,16 +416,17 @@ def process_crosstabs(rows, columns_variables, rows_variables):
     return results
 
 
-@app.route('/crosstabs/<columns>/<rows>', methods=['GET', 'POST'])
-def crosstabs(columns, rows):
-    rows_variables = rows.split(',')
-    columns_variables = columns.split(',')
+@app.route('/crosstabs', methods=['GET', 'POST'])
+def crosstabs():
     cur = mysql.connection.cursor()
     cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
-    rows = cur.fetchall()
+    records = cur.fetchall()
     cur.close()
 
-    results = process_crosstabs(rows, columns_variables, rows_variables)
+    # get the config as dict
+    config = get_config()
+
+    results = process_crosstabs(records, config)
 
     # Convert dictionary to JSON string
     json_string = json.dumps(results)
@@ -412,12 +436,12 @@ def crosstabs(columns, rows):
 
 
 # Export to CSV API
-def process_crosstabs_csv(rows, columns_variables, rows_variables):
+def process_crosstabs_csv(records, config):
     data_dict = {}
     max_length = 0  
     
-    for row in rows:
-        url_data = json.loads(row[0])
+    for record in records:
+        url_data = json.loads(record[0])
         for key, value in url_data.items():
             if value in (None, "null", "", "-"):
                 value = None
@@ -435,12 +459,14 @@ def process_crosstabs_csv(rows, columns_variables, rows_variables):
     columns_var_counts = {}
     rows_var_counts = {}
     rows_var_percentage = {}
-    for columns_var in columns_variables:
+
+    for columns in config['columns']:
+        columns_var = columns['variable']
         columns_var_counts[columns_var] = df[columns_var].value_counts()
-        
-        labels_columns = df[columns_var].apply(lambda x: get_column_label(columns_var, x, 'static/crosstab_config.json'))
-        for rows_var in rows_variables:
-            labels_rows = df[rows_var].apply(lambda x: get_row_label(rows_var, process_value(x), 'static/crosstab_config.json'))
+        labels_columns = df[columns_var].apply(lambda x: get_element(config, columns_var, x, 'columns')['label'])
+        for rows in config['rows']:
+            rows_var = rows['variable']
+            labels_rows = df[rows_var].apply(lambda x: get_element(config, rows_var, process_value(x), 'rows')['label'])
             rows_var_counts[rows_var] = labels_rows.value_counts().sort_index()  # Sorting counts by index
             rows_var_percentage[rows_var] = ((rows_var_counts[rows_var]) / len(df[rows_var])) * 100
 
@@ -476,16 +502,17 @@ def process_crosstabs_csv(rows, columns_variables, rows_variables):
 
     return results, columns_var_counts, rows_var_counts, rows_var_percentage
 
-@app.route('/export_csv/<columns>/<rows>/<csv_outputs>', methods=['GET'])
-def export_crosstabs_csv(columns, rows, csv_outputs):
-    columns_variables = columns.split(',')
-    rows_variables = rows.split(',')
+@app.route('/export_csv/<csv_outputs>', methods=['GET'])
+def export_crosstabs_csv(csv_outputs):
     cur = mysql.connection.cursor()
     cur.execute("SELECT url_data FROM records WHERE survey_code='lQuDql' AND status='cp' AND test_id=0")
-    data = cur.fetchall()
+    records = cur.fetchall()
     cur.close()
 
-    results, columns_var_counts, rows_var_counts, rows_var_percentage = process_crosstabs_csv(data, columns_variables, rows_variables)
+    # get the config as dict
+    config = get_config()
+
+    results, columns_var_counts, rows_var_counts, rows_var_percentage = process_crosstabs_csv(records, config)
 
     # Check if csv_output parameter is valid
     valid_outputs = ['frequency_crosstab', 'row_percentage', 'column_percentage', 'total_percentage', 'total_crosstab', 'chi_square_results', 'row_crosstab', 'column_crosstab']
@@ -493,16 +520,21 @@ def export_crosstabs_csv(columns, rows, csv_outputs):
     for output in selected_outputs:
         if output not in valid_outputs:
             return f"Invalid csv_output parameter: {output}", 400
+        
 
     # Export selected outputs to CSV
     csv_data = []
     
-    for columns_var in columns_variables:
-        columns_name = get_column_info(columns_var, 'static/crosstab_config.json')
+    for columns in config['columns']:
+        columns_var = columns['variable']
+        # columns_name = get_column_info(columns_var, 'static/crosstab_config.json')
+        columns_name = columns['name']
         csv_data.append([''] + [''] + ['All'] + [''] + [''] + [f'"{columns_name}"'])
         
-        for rows_var in rows_variables:
-            rows_name = get_row_info(rows_var, 'static/crosstab_config.json')
+        for rows in config['rows']:
+            rows_var = rows['variable']
+            # rows_name = get_row_info(rows_var, 'static/crosstab_config.json')
+            rows_name = rows['name']
             
             for csv_output in selected_outputs:
                 if csv_output == 'frequency_crosstab':
@@ -625,7 +657,8 @@ def export_crosstabs_csv(columns, rows, csv_outputs):
     csv_string = "\ufeff" + "\n".join([",".join(map(str, row)) for row in csv_data])
 
     # Set filename based on selected csv_outputs
-    filename = f"{'_'.join(selected_outputs)}_{'_'.join(columns_variables)}_{'_'.join(rows_variables)}.csv"
+    # filename = f"{'_'.join(selected_outputs)}_{'_'.join(columns_variables)}_{'_'.join(rows_variables)}.csv"
+    filename = f"export.csv"
 
     return Response(csv_string, mimetype='text/csv;charset=utf-8;', headers={'Content-disposition': f'attachment; filename={filename}'})
 
