@@ -1,0 +1,128 @@
+{
+    "columns": [
+        {
+            "name": "Age",
+            "data_type":"",
+            "values": [
+                {
+                    "label": "18-26",
+                    "value": 1
+                },
+                {
+                    "label": "27-35",
+                    "value": 2
+                },
+                {
+                    "label": "36-44",
+                    "value": 3
+                },
+                {
+                    "label": "45-50",
+                    "value": 4
+                },
+                {
+                    "label": "51-65",
+                    "value": 5
+                },
+                {
+                    "label": "Over 65",
+                    "value": 6
+                }
+                
+            ],
+            "variable": "AgeGroup"
+        },
+        {
+            "name": "Occupation",
+            "data_type": "",
+            "values":[
+                {
+                    "label": "Senior managerial, senior administrative or senior professional",
+                    "value": 1
+                },
+                {
+                    "label": "Intermediate managerial, intermediate administrative or intermediate professional",
+                    "value": 2
+                },
+                {
+                    "label": "Supervisory or clerical, junior managerial, junior administrative or junior professional",
+                    "value": 3
+                },
+                {
+                    "label": "Skilled manual worker",
+                    "value": 4
+                },
+                {
+                    "label": "Semi and unskilled manual worker",
+                    "value": 5
+                },
+                {
+                    "label": "State pensioner or widow, casual or lowest grade worker",
+                    "value": 6
+                },
+                {
+                    "label": "Student",
+                    "value": 7
+                },
+                {
+                    "label": "Unemployed",
+                    "value": 8
+                }
+            ],
+            "variable": "b3"
+        }
+
+    ],
+    "rows" : [
+        {
+            "name": "Industries",
+            "data_type": "",
+            "values": [
+                {
+                    "label": "Healthcare, nutrition, physical instruction, sports science",
+                    "value": 1
+                },
+                {
+                    "label": "Advertising, marketing, market research company",
+                    "value": 2
+                },
+                {
+                    "label": "Sales or manufacture of pharmaceutical products ",
+                    "value": 3
+                },
+                {
+                    "label": "Newspaper, magazine, radio, TV station, other news organisation ",
+                    "value": 4
+                },
+                {
+                    "label": "Other industry",
+                    "value": 5
+                }
+            ],
+            "variable": "a4"
+        },
+        {
+            "name": "Children",
+            "data_type": "",
+            "values":[
+                {
+                    "label": "none",
+                    "value": 1
+                },
+                {
+                    "label": "one",
+                    "value": 2
+                },
+                {
+                    "label": "two",
+                    "value": 3
+                },
+                {
+                    "label": "three or more",
+                    "value": 4
+                }
+            ],
+            "variable": "b4"
+        }
+    ]
+}

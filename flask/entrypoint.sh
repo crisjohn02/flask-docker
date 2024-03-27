@@ -1,3 +1,3 @@
 #!/bin/sh
 
-python view.py
+python augmentation.py
